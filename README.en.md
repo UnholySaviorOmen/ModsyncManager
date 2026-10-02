@@ -112,11 +112,8 @@ under any terms — including commercial — or to keep it unlicensed.
 ModsyncManager does not grant you rights to:
 
 - Mod files. They remain under their respective authors' licenses.
-- Third-party platforms (Nexus Mods, GitHub, etc.). Their terms of
-  service may restrict commercial use of references to their
-  content.
-- Mod authors' rights. Including their right to request removal of
-  their mod from your list.
+- Third-party platforms (Nexus Mods, GitHub, etc.).
+- Mod authors' rights.
 
 Responsibility for compliance with these terms lies with the
 manifest author, not with ModsyncManager.
