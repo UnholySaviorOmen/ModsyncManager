@@ -1,0 +1,160 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modsync.Gui.Modules.Verify.ViewModels"
+             xmlns:controls="using:Modsync.Gui.Controls.Views"
+             x:Class="Modsync.Gui.Modules.Verify.Views.VerifyView"
+             x:DataType="vm:VerifyVM">
+    <Grid RowDefinitions="Auto,*" Margin="20">
+
+        <!-- Header -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+            <TextBlock Grid.Column="0"
+                       Text="Verify"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Configuration -->
+        <StackPanel Grid.Row="1"
+                    Spacing="16"
+                    IsVisible="{Binding IsConfiguring}"
+                    VerticalAlignment="Top">
+            <controls:FilePickerView DataContext="{Binding TargetPicker}" />
+
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="{StaticResource WarningBrush}"
+                       FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+            <Button Content="Verify"
+                    Command="{Binding VerifyCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="20,8" />
+        </StackPanel>
+
+        <!-- Verifying -->
+        <StackPanel Grid.Row="1"
+                    Spacing="20"
+                    IsVisible="{Binding IsVerifying}"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Stretch">
+            <TextBlock Text="Verifying…"
+                       FontSize="16"
+                       HorizontalAlignment="Center" />
+            <ProgressBar IsIndeterminate="True"
+                         Height="6" />
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    HorizontalAlignment="Center"
+                    Padding="20,8" />
+        </StackPanel>
+
+        <!-- Success -->
+        <Grid Grid.Row="1"
+              RowDefinitions="Auto,Auto,*,Auto"
+              IsVisible="{Binding IsSuccess}">
+
+            <!-- Result header -->
+            <StackPanel Grid.Row="0"
+                        Spacing="4"
+                        Margin="0,0,0,12">
+                <TextBlock Text="{Binding ResultTitle}"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Foreground="{Binding ResultColor}" />
+                <TextBlock Text="{Binding TargetPath}"
+                           FontFamily="Consolas,Menlo,monospace"
+                           FontSize="12"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Foreground="{StaticResource TextSecondaryBrush}" FontSize="12">
+                    <Run Text="Passed: " />
+                    <Run Text="{Binding PassedCount}" />
+                    <Run Text="   Failed: " />
+                    <Run Text="{Binding FailedCount}" />
+                </TextBlock>
+            </StackPanel>
+
+            <!-- Toggle -->
+            <CheckBox Grid.Row="1"
+                      Content="Show all checks (verbose)"
+                      IsChecked="{Binding ShowAllChecks}"
+                      Margin="0,0,0,8" />
+
+            <!-- Rows -->
+            <Border Grid.Row="2"
+                    Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:VerifyRowVM">
+                                <Grid ColumnDefinitions="20,*,Auto"
+                                      Margin="12,4">
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding StatusGlyph}"
+                                               Foreground="{Binding StatusColor}"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontWeight="Bold" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Name}"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Margin="4,0,12,0" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding Message}"
+                                               FontFamily="Consolas,Menlo,monospace"
+                                               FontSize="11"
+                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="400" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+
+            <!-- Done -->
+            <Button Grid.Row="3"
+                    Content="Done"
+                    Command="{Binding DoneCommand}"
+                    HorizontalAlignment="Left"
+                    Margin="0,12,0,0"
+                    Padding="20,8" />
+        </Grid>
+
+        <!-- Failure -->
+        <StackPanel Grid.Row="1"
+                    Spacing="12"
+                    IsVisible="{Binding IsFailure}"
+                    VerticalAlignment="Top">
+            <TextBlock Text="Verify failed"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource ErrorBrush}" />
+
+            <Border Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource ErrorBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16">
+                <TextBlock Text="{Binding ErrorMessage}"
+                           TextWrapping="Wrap"
+                           FontFamily="Consolas,Menlo,monospace"
+                           FontSize="12" />
+            </Border>
+
+            <Button Content="Done"
+                    Command="{Binding DoneCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="20,8" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

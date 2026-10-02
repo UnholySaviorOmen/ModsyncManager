@@ -1,0 +1,18 @@
+<Project>
+
+  <!--
+    Копировать Assets/7z/* (7z.exe, 7z.dll, License.txt) в output
+    каждого проекта, который ссылается на Firelink.Core.
+
+    Причина: <Content> в Firelink.Core.csproj не копируется транзитивно
+    через ProjectReference. Приходится делать это глобально.
+  -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)src\Firelink.Core\Assets\7z\7z.exe')">
+    <Content Include="$(MSBuildThisFileDirectory)src\Firelink.Core\Assets\7z\**\*">
+      <Link>Assets\7z\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </Content>
+  </ItemGroup>
+
+</Project>

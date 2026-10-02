@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Modsync.Pack\Modsync.Pack.csproj" />
+  </ItemGroup>
+
+  <!--
+    Транзитивное копирование 7z.exe из Modsync.Core через ProjectReference
+    на Modsync.Pack может отваливаться на разных версиях SDK. Дублируем
+    явно для надёжности: тесты тоже вызывают SevenZipExtractor.
+  -->
+  <ItemGroup>
+    <None Include="..\..\src\Modsync.Core\Assets\7z\**\*.*"
+          Link="Assets\7z\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

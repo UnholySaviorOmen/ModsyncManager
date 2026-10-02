@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Modsync.Gui.Shared.ViewModels"
+        xmlns:views="using:ModsyncManager.Gui.Views"
+        x:Class="ModsyncManager.Gui.MainWindow"
+        x:DataType="vm:MainWindowVM"
+        Title="ModsyncManager"
+        Width="1000"
+        Height="700">
+  <Grid ColumnDefinitions="220,*">
+    <views:NavigationView Grid.Column="0"
+                          DataContext="{Binding Navigation}" />
+    <ContentControl Grid.Column="1"
+                    Content="{Binding ActivePane}" />
+  </Grid>
+</Window>

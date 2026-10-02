@@ -1,0 +1,45 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Modsync.Core/Modsync.Core.csproj" Id="92f0e613-d4eb-4f12-b36b-638b3685909b" />
+    <Project Path="src/Modsync.Gui.Controls/Modsync.Gui.Controls.csproj" Id="09ae1264-d89b-4526-9a97-647d6d1a8b1a" />
+    <Project Path="src/Modsync.Gui.Modules/Modsync.Gui.Modules.csproj" Id="df8101dd-c338-4263-91cb-b2a0268ca303" />
+    <Project Path="src/Modsync.Gui.Shared/Modsync.Gui.Shared.csproj" Id="0339fd44-36fa-4a47-87c5-205992964406" />
+    <Project Path="src/Modsync.Install/Modsync.Install.csproj" Id="44504912-431f-4213-94ce-4ed957338ba0" />
+    <Project Path="src/Modsync.Logging/Modsync.Logging.csproj" Id="a466c948-1795-4477-9d2c-9f4f11db72f1" />
+    <Project Path="src/Modsync.Pack/Modsync.Pack.csproj" Id="46ba17ab-474a-408f-9fa2-f1a13865e0e3" />
+    <Project Path="src/Modsync.Platform.MO2/Modsync.Platform.MO2.csproj" Id="65686695-75db-4d8c-90da-9674283eb94c" />
+    <Project Path="src/Modsync.Platform.Nexus/Modsync.Platform.Nexus.csproj" Id="cc890934-6f89-4dfa-970a-645fa2b1a8fb" />
+    <Project Path="src/ModsyncManager.Gui/ModsyncManager.Gui.csproj" Id="d2a506aa-c11a-4729-b881-6819ae53394a" />
+    <Project Path="src/ModsyncManager.NxmHandler/ModsyncManager.NxmHandler.csproj" Id="086c44d8-48e7-49fb-8b08-56b71e961c6f" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Modsync.Core.Tests/Modsync.Core.Tests.csproj" Id="438b5e1f-2ca7-4f15-9d83-b0ca22756443" />
+    <Project Path="tests/Modsync.Gui.Modules.Tests/Modsync.Gui.Modules.Tests.csproj" Id="eccd0cd2-93ea-4499-b668-ed1edefcb8c3" />
+    <Project Path="tests/Modsync.Gui.Shared.Tests/Modsync.Gui.Shared.Tests.csproj" Id="31bb7240-0b27-442e-b7cc-3ca6038f0970" />
+    <Project Path="tests/Modsync.Install.Tests/Modsync.Install.Tests.csproj" Id="2d348521-c8eb-4151-a28d-2c3b5f5c9240" />
+    <Project Path="tests/Modsync.Integration.Tests/Modsync.Integration.Tests.csproj" Id="d7ddd47e-3339-4f8e-b22f-535677a8a3ad" />
+    <Project Path="tests/Modsync.Logging.Tests/Modsync.Logging.Tests.csproj" Id="0fc8ff7f-612d-4460-b933-27b5ecece768" />
+    <Project Path="tests/Modsync.Pack.Tests/Modsync.Pack.Tests.csproj" Id="0ea0ef7e-ee9f-4797-886b-bf3d0afbd9ea" />
+    <Project Path="tests/Modsync.Platform.MO2.Tests/Modsync.Platform.MO2.Tests.csproj" Id="0ae2caa4-c2cd-47b6-a4b1-b804f563d1f4" />
+    <Project Path="tests/Modsync.Platform.Nexus.Tests/Modsync.Platform.Nexus.Tests.csproj" Id="b563380a-fcc0-49f6-b67d-c74db0538375" />
+    <Project Path="tests/ModsyncManager.NxmHandler.Tests/ModsyncManager.NxmHandler.Tests.csproj" Id="e217ffd8-bb6b-4691-a9ac-57425484de65" />
+  </Folder>
+  <Folder Name="/Элементы решения/">
+    <File Path="CLA.md" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="DEEPSEEK.md" />
+    <File Path="DOC.md" />
+    <File Path="README.en.md" />
+	<File Path="README.md" />
+	<File Path="LICENSE" />
+	<File Path="THIRD-PARTY-NOTICES.md" />
+  </Folder>
+  <Folder Name="/Элементы решения/.github/">
+    <File Path="pull_request_template.md" />
+  </Folder>
+  <Folder Name="/Элементы решения/.github/ISSUE_TEMPLATE/">
+    <File Path="bug_report.md" />
+    <File Path="config.yml" />
+    <File Path="feature_request.md" />
+  </Folder>
+</Solution>

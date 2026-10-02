@@ -1,0 +1,54 @@
+# --- Visual Studio / Rider / VS Code ---
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+
+# --- Build output ---
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+build/
+build_artifacts/
+
+# --- NuGet ---
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+.nuget/
+
+# --- Test / coverage ---
+[Tt]est[Rr]esult*/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# --- OS junk ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+.DS_Store
+
+# --- ModsyncManager-specific ---
+# Логи, которые ModsyncManager пишет
+modsyncmanager.log
+modsyncmanager-*.log
+
+# Локальные инстансы MO2, которые не надо коммитить
+# (раскомментируйте, если инстанс лежит рядом с репо)
+# OmenRim 7/
+
+# --- repo-dumps ---
+repo-dump.md
+repo-dump-extra.md

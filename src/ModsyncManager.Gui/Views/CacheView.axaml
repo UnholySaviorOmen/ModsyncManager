@@ -1,0 +1,78 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modsync.Gui.Shared.ViewModels"
+             x:Class="ModsyncManager.Gui.Views.CacheView"
+             x:DataType="vm:CacheVM">
+
+  <Grid RowDefinitions="Auto,*" Margin="20">
+
+    <!-- Header -->
+    <Grid Grid.Row="0"
+          ColumnDefinitions="*,Auto"
+          Margin="0,0,0,16">
+      <TextBlock Grid.Column="0"
+                 Text="Cache"
+                 FontSize="24"
+                 FontWeight="Bold"
+                 VerticalAlignment="Center" />
+    </Grid>
+
+    <ScrollViewer Grid.Row="1"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="20">
+
+        <!-- Hash cache -->
+        <StackPanel Spacing="8">
+          <TextBlock Text="Hash cache"
+                     FontSize="16"
+                     FontWeight="SemiBold" />
+
+          <Border Background="{StaticResource SurfaceRaisedBrush}"
+                  BorderBrush="{StaticResource BorderSubtleBrush}"
+                  BorderThickness="1"
+                  CornerRadius="10"
+                  Padding="16">
+            <StackPanel Spacing="12">
+
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Spacing="4">
+                  <TextBlock Text="{Binding HashCachePath}"
+                             Foreground="{StaticResource TextMutedBrush}"
+                             FontFamily="Consolas,Menlo,monospace"
+                             FontSize="11"
+                             TextTrimming="CharacterEllipsis" />
+                  <TextBlock Text="{Binding HashCacheSizeText}"
+                             Foreground="{StaticResource TextSecondaryBrush}"
+                             FontSize="12" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        Content="Clear hash cache"
+                        Command="{Binding ClearHashCacheCommand}"
+                        Padding="12,6" />
+              </Grid>
+
+              <TextBlock Text="{Binding StatusMessage}"
+                         Foreground="{StaticResource SuccessBrush}"
+                         FontSize="12"
+                         IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+              <TextBlock TextWrapping="Wrap"
+                         Foreground="{StaticResource TextMutedBrush}"
+                         FontSize="11">
+                ModsyncManager caches file hashes to speed up repeated
+                pack/install/verify runs. Clearing the cache is safe —
+                hashes will be recomputed on the next run.
+              </TextBlock>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Archives registry — placeholder for block 2.2 -->
+        <!-- Раскомментировать, когда появится archives.db. -->
+
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

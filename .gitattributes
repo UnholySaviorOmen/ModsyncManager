@@ -1,0 +1,26 @@
+# Auto-detect text files and normalize line endings to LF on commit,
+# then convert to CRLF on checkout for Windows.
+* text=auto eol=crlf
+
+# Explicit binary files — never touch.
+*.ico  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.7z   binary
+*.zip  binary
+*.dll  binary
+*.exe  binary
+*.so   binary
+*.dylib binary
+*.pdb  binary
+*.nupkg binary
+
+# Visual Studio / Rider caches — never merge.
+.vs/     export-ignore
+.idea/   export-ignore
+.vscode/ export-ignore
+
+# 7-Zip binaries (third-party) — don't try to diff.
+src/Modsync.Core/Assets/7z/ binary

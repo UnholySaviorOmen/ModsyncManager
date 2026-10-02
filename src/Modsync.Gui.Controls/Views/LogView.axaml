@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modsync.Gui.Shared.ViewModels"
+             xmlns:log="using:Modsync.Gui.Shared.Logging"
+             xmlns:conv="using:Modsync.Gui.Controls.Converters"
+             x:Class="Modsync.Gui.Controls.Views.LogView"
+             x:DataType="vm:LogVM">
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Header -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*,Auto"
+              Background="{StaticResource SurfaceRaisedBrush}">
+            <TextBlock Grid.Column="0"
+                       Text="Log"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Margin="12,8"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="1"
+                    Content="Clear"
+                    Command="{Binding ClearCommand}"
+                    Margin="8,6"
+                    Padding="12,4"
+                    FontSize="11" />
+        </Grid>
+
+        <!-- Entries -->
+        <ScrollViewer Grid.Row="1"
+                      Name="Scroll"
+                      Background="{StaticResource SurfaceBaseBrush}"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Entries}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="log:LogEntry">
+                        <TextBlock Padding="12,2"
+                                   FontFamily="Consolas,Menlo,monospace"
+                                   FontSize="12"
+                                   TextWrapping="Wrap"
+                                   Foreground="{Binding Level, Converter={x:Static conv:LogLevelToBrushConverter.Instance}}">
+                            <Run Text="[" />
+                            <Run Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" />
+                            <Run Text="] [" />
+                            <Run Text="{Binding Level}" />
+                            <Run Text="] " />
+                            <Run Text="{Binding Message}" />
+                        </TextBlock>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

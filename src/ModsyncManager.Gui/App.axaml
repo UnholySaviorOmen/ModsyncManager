@@ -1,0 +1,264 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ModsyncManager.Gui.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.Resources>
+        <ResourceDictionary>
+
+            <!-- ============================================================
+           Палитра ModsyncManager. Тёплый песочный акцент на нейтральном
+           тёмном фоне. Все цвета — единый источник правды.
+           ============================================================ -->
+
+            <!-- Base surfaces -->
+            <Color x:Key="SurfaceBaseColor">#1e1e1e</Color>
+            <Color x:Key="SurfaceSidebarColor">#181818</Color>
+            <Color x:Key="SurfaceRaisedColor">#242424</Color>
+            <Color x:Key="SurfaceOverlayColor">#2a2a2a</Color>
+            <Color x:Key="SurfaceHoverColor">#2f2f2f</Color>
+
+            <SolidColorBrush x:Key="SurfaceBaseBrush"    Color="{StaticResource SurfaceBaseColor}" />
+            <SolidColorBrush x:Key="SurfaceSidebarBrush" Color="{StaticResource SurfaceSidebarColor}" />
+            <SolidColorBrush x:Key="SurfaceRaisedBrush"  Color="{StaticResource SurfaceRaisedColor}" />
+            <SolidColorBrush x:Key="SurfaceOverlayBrush" Color="{StaticResource SurfaceOverlayColor}" />
+            <SolidColorBrush x:Key="SurfaceHoverBrush"   Color="{StaticResource SurfaceHoverColor}" />
+
+            <!-- Borders -->
+            <Color x:Key="BorderSubtleColor">#333333</Color>
+            <Color x:Key="BorderStrongColor">#3f3f3f</Color>
+
+            <SolidColorBrush x:Key="BorderSubtleBrush" Color="{StaticResource BorderSubtleColor}" />
+            <SolidColorBrush x:Key="BorderStrongBrush" Color="{StaticResource BorderStrongColor}" />
+
+            <!-- Text -->
+            <Color x:Key="TextPrimaryColor">#e8e8e8</Color>
+            <Color x:Key="TextSecondaryColor">#a0a0a0</Color>
+            <Color x:Key="TextMutedColor">#6a6a6a</Color>
+
+            <SolidColorBrush x:Key="TextPrimaryBrush"   Color="{StaticResource TextPrimaryColor}" />
+            <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
+            <SolidColorBrush x:Key="TextMutedBrush"     Color="{StaticResource TextMutedColor}" />
+
+            <!-- Accent -->
+            <Color x:Key="AccentColor">#d3b181</Color>
+            <Color x:Key="AccentHoverColor">#e0c090</Color>
+            <Color x:Key="AccentPressedColor">#b89868</Color>
+            <Color x:Key="AccentMutedColor">#4a3e2a</Color>
+
+            <SolidColorBrush x:Key="AccentBrush"        Color="{StaticResource AccentColor}" />
+            <SolidColorBrush x:Key="AccentHoverBrush"   Color="{StaticResource AccentHoverColor}" />
+            <SolidColorBrush x:Key="AccentPressedBrush" Color="{StaticResource AccentPressedColor}" />
+            <SolidColorBrush x:Key="AccentMutedBrush"   Color="{StaticResource AccentMutedColor}" />
+
+            <!-- Semantic -->
+            <Color x:Key="SuccessColor">#7fc98a</Color>
+            <Color x:Key="ErrorColor">#d97777</Color>
+            <Color x:Key="WarningColor">#d3b181</Color>
+
+            <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />
+            <SolidColorBrush x:Key="ErrorBrush"   Color="{StaticResource ErrorColor}" />
+            <SolidColorBrush x:Key="WarningBrush" Color="{StaticResource WarningColor}" />
+
+            <!-- Типографика -->
+            <x:Double x:Key="FontSizeCaption">11</x:Double>
+            <x:Double x:Key="FontSizeSmall">12</x:Double>
+            <x:Double x:Key="FontSizeBody">13</x:Double>
+            <x:Double x:Key="FontSizeSubtitle">14</x:Double>
+            <x:Double x:Key="FontSizeTitle">24</x:Double>
+            <x:Double x:Key="FontSizeDisplay">30</x:Double>
+
+            <!-- ============================================================
+           Переопределения Fluent-кнопок: все кнопки выглядят как secondary
+           (нейтральный серый фон, светлый текст). Песочный акцент для
+           кнопок не используется. Ключи читает Fluent-тема Avalonia;
+           их переопределение побеждает встроенные стили Button,
+           Button:pointerover, Button:pressed, Button:disabled.
+           ============================================================ -->
+
+            <SolidColorBrush x:Key="ButtonBackground"             Color="{StaticResource SurfaceOverlayColor}" />
+            <SolidColorBrush x:Key="ButtonBackgroundPointerOver"  Color="{StaticResource SurfaceHoverColor}" />
+            <SolidColorBrush x:Key="ButtonBackgroundPressed"      Color="{StaticResource SurfaceRaisedColor}" />
+            <SolidColorBrush x:Key="ButtonBackgroundDisabled"     Color="{StaticResource SurfaceRaisedColor}" />
+
+            <SolidColorBrush x:Key="ButtonForeground"             Color="{StaticResource TextPrimaryColor}" />
+            <SolidColorBrush x:Key="ButtonForegroundPointerOver"  Color="{StaticResource TextPrimaryColor}" />
+            <SolidColorBrush x:Key="ButtonForegroundPressed"      Color="{StaticResource TextPrimaryColor}" />
+            <SolidColorBrush x:Key="ButtonForegroundDisabled"     Color="{StaticResource TextMutedColor}" />
+
+            <SolidColorBrush x:Key="ButtonBorderBrush"            Color="{StaticResource BorderStrongColor}" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="{StaticResource BorderStrongColor}" />
+            <SolidColorBrush x:Key="ButtonBorderBrushPressed"     Color="{StaticResource BorderStrongColor}" />
+            <SolidColorBrush x:Key="ButtonBorderBrushDisabled"    Color="{StaticResource BorderSubtleColor}" />
+
+        </ResourceDictionary>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- ============================================================
+         Window
+         ============================================================ -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="{StaticResource SurfaceBaseBrush}" />
+        </Style>
+
+        <!-- ============================================================
+         TextBlock — базовый + классы
+         ============================================================ -->
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontSize"   Value="{StaticResource FontSizeBody}" />
+        </Style>
+
+        <Style Selector="TextBlock.h1">
+            <Setter Property="FontSize"   Value="{StaticResource FontSizeDisplay}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.h2">
+            <Setter Property="FontSize"   Value="{StaticResource FontSizeTitle}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.subtitle">
+            <Setter Property="FontSize"   Value="{StaticResource FontSizeSubtitle}" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.caption">
+            <Setter Property="FontSize"   Value="{StaticResource FontSizeSmall}" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+        </Style>
+
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+
+        <!-- ============================================================
+         Button — единый secondary-стиль.
+         Фон, рамка и текст всех состояний задаются через Fluent-ключи
+         (Application.Resources: ButtonBackground*, ButtonForeground*,
+         ButtonBorderBrush*). Здесь только геометрия и типографика.
+         Класса .accent нет — все кнопки одинаковые.
+         ============================================================ -->
+        <Style Selector="Button">
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius"    Value="8" />
+            <Setter Property="Padding"         Value="16,8" />
+            <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}" />
+            <Setter Property="FontWeight"      Value="Medium" />
+        </Style>
+
+        <!-- ============================================================
+         TextBox — используется в Settings в будущем.
+         Сейчас в проекте TextBox нет, но стили на будущее.
+         ============================================================ -->
+        <Style Selector="TextBox">
+            <Setter Property="Background"      Value="{StaticResource SurfaceRaisedBrush}" />
+            <Setter Property="Foreground"      Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush"     Value="{StaticResource BorderStrongBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius"    Value="8" />
+            <Setter Property="Padding"         Value="10,8" />
+            <Setter Property="MinHeight"       Value="36" />
+            <Setter Property="FontSize"        Value="{StaticResource FontSizeBody}" />
+            <Setter Property="CaretBrush"      Value="{StaticResource AccentBrush}" />
+            <Setter Property="SelectionBrush"  Value="{StaticResource AccentMutedBrush}" />
+        </Style>
+
+        <Style Selector="TextBox /template/ Border#PART_BorderElement">
+            <Setter Property="Background"      Value="{StaticResource SurfaceRaisedBrush}" />
+            <Setter Property="BorderBrush"     Value="{StaticResource BorderStrongBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius"    Value="8" />
+        </Style>
+
+        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+            <Setter Property="Background"  Value="{StaticResource SurfaceOverlayBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderStrongBrush}" />
+        </Style>
+
+        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+            <Setter Property="Background"  Value="{StaticResource SurfaceOverlayBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        </Style>
+
+        <Style Selector="TextBox /template/ TextBlock#PART_Watermark">
+            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+
+        <!-- ============================================================
+         CheckBox
+         ============================================================ -->
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+            <Setter Property="FontSize"   Value="{StaticResource FontSizeBody}" />
+        </Style>
+
+        <Style Selector="CheckBox:checked /template/ Border#NormalRectangle">
+            <Setter Property="Background"  Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+        </Style>
+
+        <!-- ============================================================
+         ListBox — навигация (карточки в стиле референса)
+         ============================================================ -->
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
+        <Style Selector="ListBoxItem">
+            <Setter Property="Foreground"   Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Padding"      Value="0" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+            <Setter Property="Background"   Value="{StaticResource SurfaceOverlayBrush}" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+            <Setter Property="Background"   Value="{StaticResource SurfaceRaisedBrush}" />
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <Style Selector="ListBoxItem:selected PathIcon">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+        </Style>
+
+        <Style Selector="ListBoxItem:selected TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        </Style>
+
+        <!-- ============================================================
+         ScrollViewer
+         ============================================================ -->
+        <Style Selector="ScrollBar">
+            <Setter Property="Background" Value="Transparent" />
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Thumb">
+            <Setter Property="Background"   Value="{StaticResource BorderStrongBrush}" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Thumb:pointerover">
+            <Setter Property="Background" Value="{StaticResource TextMutedBrush}" />
+        </Style>
+
+        <!-- ============================================================
+         ProgressBar
+         ============================================================ -->
+        <Style Selector="ProgressBar">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="{StaticResource SurfaceOverlayBrush}" />
+        </Style>
+
+    </Application.Styles>
+</Application>

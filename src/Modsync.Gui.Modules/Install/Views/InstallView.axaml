@@ -1,0 +1,215 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modsync.Gui.Modules.Install.ViewModels"
+             xmlns:controls="using:Modsync.Gui.Controls.Views"
+             x:Class="Modsync.Gui.Modules.Install.Views.InstallView"
+             x:DataType="vm:InstallVM">
+
+    <UserControl.Styles>
+        <!-- Спиннер: дуга, вращающаяся вокруг центра.
+             PathIcon 24x24 viewBox, Path строится через SVG-подобный синтаксис.
+             RotateTransform.Angle анимируется 0 → 360 за 1 секунду. -->
+        <Style Selector="PathIcon.spinner">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Foreground"
+                    Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="RenderTransform">
+                <RotateTransform CenterX="7" CenterY="7" />
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:1" IterationCount="INFINITE">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="RotateTransform.Angle" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="RotateTransform.Angle" Value="360" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*" Margin="20">
+
+        <!-- Header -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+            <TextBlock Grid.Column="0"
+                       Text="Install"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Configuration -->
+        <StackPanel Grid.Row="1"
+                    Spacing="16"
+                    IsVisible="{Binding IsConfiguring}"
+                    VerticalAlignment="Top">
+            <controls:FilePickerView DataContext="{Binding ModlistPicker}" />
+            <controls:FilePickerView DataContext="{Binding TargetPicker}" />
+
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="{StaticResource WarningBrush}"
+                       FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+            <Button Content="Install"
+                    Command="{Binding InstallCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="20,8" />
+        </StackPanel>
+
+        <!-- Installing -->
+        <StackPanel Grid.Row="1"
+                    Spacing="20"
+                    IsVisible="{Binding IsInstalling}"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Stretch">
+
+            <!-- Step name -->
+            <TextBlock Text="{Binding StepName}"
+                       FontSize="16"
+                       HorizontalAlignment="Center" />
+
+            <!-- Step X of Y · Detail ⟳ (одна строка) -->
+            <StackPanel Orientation="Horizontal"
+                        Spacing="6"
+                        HorizontalAlignment="Center">
+
+                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center">
+                    <Run Text="Step " />
+                    <Run Text="{Binding CurrentStep}" />
+                    <Run Text=" of " />
+                    <Run Text="{Binding TotalSteps}" />
+                </TextBlock>
+
+                <TextBlock Text="·"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding HasDetail}" />
+
+                <TextBlock Text="{Binding Detail}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding HasDetail}" />
+
+                <PathIcon Classes="spinner"
+                          IsVisible="{Binding HasDetail}">
+                    <PathIcon.Data>
+                        <StreamGeometry>M 12 3 A 9 9 0 1 1 3 12</StreamGeometry>
+                    </PathIcon.Data>
+                </PathIcon>
+            </StackPanel>
+
+            <!-- Progress bar -->
+            <ProgressBar Value="{Binding Percent}"
+                         Minimum="0"
+                         Maximum="100"
+                         Height="6" />
+
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    HorizontalAlignment="Center"
+                    Padding="20,8" />
+        </StackPanel>
+
+        <!-- Success -->
+        <StackPanel Grid.Row="1"
+                    Spacing="12"
+                    IsVisible="{Binding IsSuccess}"
+                    VerticalAlignment="Top">
+            <TextBlock Text="Installation complete"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource SuccessBrush}" />
+
+            <Border Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource BorderSubtleBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16">
+                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Name"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
+                    <TextBlock Grid.Row="0" Grid.Column="1"
+                               Text="{Binding Summary.Name}" Margin="0,0,0,4" />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Version"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="1"
+                               Text="{Binding Summary.Version}" Margin="0,0,0,4" />
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Instance"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
+                    <TextBlock Grid.Row="2" Grid.Column="1"
+                               Text="{Binding Summary.InstancePath}"
+                               FontFamily="Consolas,Menlo,monospace"
+                               FontSize="12"
+                               TextTrimming="CharacterEllipsis"
+                               Margin="0,0,0,4" />
+
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Mods"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,4">
+                        <Run Text="{Binding Summary.ModsCreated}" />
+                        <Run Text=" created, " />
+                        <Run Text="{Binding Summary.ModsSkipped}" />
+                        <Run Text=" skipped" />
+                    </TextBlock>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Archives"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
+                    <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,0,0,4">
+                        <Run Text="{Binding Summary.ArchivesDownloaded}" />
+                        <Run Text=" downloaded, " />
+                        <Run Text="{Binding Summary.ArchivesAlreadyPresent}" />
+                        <Run Text=" present" />
+                    </TextBlock>
+
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="meta.ini"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,0" />
+                    <TextBlock Grid.Row="5" Grid.Column="1"
+                               Text="{Binding Summary.MetaIniWritten}" />
+                </Grid>
+            </Border>
+
+            <Button Content="Done"
+                    Command="{Binding DoneCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="20,8" />
+        </StackPanel>
+
+        <!-- Failure -->
+        <StackPanel Grid.Row="1"
+                    Spacing="12"
+                    IsVisible="{Binding IsFailure}"
+                    VerticalAlignment="Top">
+            <TextBlock Text="Installation failed"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource ErrorBrush}" />
+
+            <Border Background="{StaticResource SurfaceRaisedBrush}"
+                    BorderBrush="{StaticResource ErrorBrush}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="16">
+                <TextBlock Text="{Binding ErrorMessage}"
+                           TextWrapping="Wrap"
+                           FontFamily="Consolas,Menlo,monospace"
+                           FontSize="12" />
+            </Border>
+
+            <Button Content="Done"
+                    Command="{Binding DoneCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="20,8" />
+        </StackPanel>
+
+    </Grid>
+</UserControl>

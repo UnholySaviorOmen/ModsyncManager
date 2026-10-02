@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "name": "Nordic UI Overhaul",
+    "version": "1.2.0",
+    "author": "Username",
+    "game": "skyrimspecialedition",
+    "gameVersion": "1.6.1170"
+  },
+  "instance": {
+    "path": "NordicUI Overhaul"
+  },
+  "mo2": {
+    "version": "2.5.2",
+    "profile": "NordicUI",
+    "archive": "Mod.Organizer-2.5.2.7z",
+    "source": {
+      "type": "mirror",
+      "url": "https://github.com/ModOrganizer2/modorganizer/releases/download/v2.5.2/Mod.Organizer-2.5.2.7z",
+      "hash": "xxh64:0000000000000001"
+    },
+    "extensions": [
+      "plugins/fomod_plus_installer.dll",
+      "plugins/fomod_plus_scanner.dll",
+      "tools/BethINI/"
+    ]
+  },
+  "stockGame": {
+    "extras": [
+      "skse64_loader.exe",
+      "skse64_1_6_1170.dll",
+      "d3d11.dll",
+      "enbseries/"
+    ]
+  },
+  "archiveSources": [
+    {
+      "archive": "SomeModWithoutMeta.7z",
+      "sources": [
+        {
+          "type": "mirror",
+          "url": "https://cdn.example.com/SomeModWithoutMeta.7z",
+          "hash": "xxh64:0000000000000abc"
+        },
+        {
+          "type": "nexus",
+          "modId": 12345,
+          "fileId": 67890,
+          "game": "skyrimspecialedition"
+        }
+      ]
+    },
+    {
+      "archive": "AnotherMod.7z",
+      "sources": [
+        {
+          "type": "mirror",
+          "url": "https://github.com/author/repo/releases/download/v1.0/AnotherMod.7z",
+          "hash": "xxh64:0000000000000def"
+        }
+      ]
+    }
+  ]
+}

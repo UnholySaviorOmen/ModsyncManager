@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "name": "OmenRim 7",
+    "version": "0.1.0",
+    "author": "YourName",
+    "game": "skyrimspecialedition",
+    "gameVersion": "1.6.1170"
+  },
+  "instance": {
+    "path": "."
+  },
+  "mo2": {
+    "version": "2.5.2",
+    "profile": "Default",
+    "archive": "Mod.Organizer-2.5.2.7z",
+    "source": {
+      "type": "mirror",
+      "url": "https://github.com/ModOrganizer2/modorganizer/releases/download/v2.5.2/Mod.Organizer-2.5.2.7z",
+      "hash": "xxh64:E574E05EB6C470AD"
+    },
+	  "extensions": [
+		"plugins/curationclub"
+	]
+  },
+  "stockGame": {
+	"extras": [
+    "skse64_loader.exe",
+    "skse64_1_7_104.dll"
+	]
+  },
+  "archiveSources": []
+}

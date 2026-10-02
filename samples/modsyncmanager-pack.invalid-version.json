@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "name": "Bad Version Pack",
+    "version": "v1.0",
+    "author": "tester",
+    "game": "skyrimspecialedition",
+    "gameVersion": "1.6.1170"
+  },
+  "instance": {
+    "path": "Bad Version Pack"
+  },
+  "mo2": {
+    "version": "2.5.2",
+    "profile": "Default",
+    "archive": "Mod.Organizer-2.5.2.7z",
+    "source": {
+      "type": "mirror",
+      "url": "https://example.com/Mod.Organizer-2.5.2.7z",
+      "hash": "xxh64:0000000000000001"
+    },
+    "extensions": []
+  },
+  "stockGame": {
+    "extras": []
+  },
+  "archiveSources": []
+}

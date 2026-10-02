@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>ModsyncManager.NxmHandler</RootNamespace>
+    <AssemblyName>ModsyncManager.NxmHandler</AssemblyName>
+
+    <!--
+      InvariantGlobalization=true наследуется из Directory.Build.props.
+      Для handler-а это ок: он не работает с локалями, только с ASCII URL.
+    -->
+
+    <!--
+      Никаких Avalonia, никаких Microsoft.Extensions.* — handler
+      должен стартовать мгновенно. Только BCL + Modsync.Core
+      (для ModsyncPaths и NxmPipeName).
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Modsync.Core\Modsync.Core.csproj" />
+  </ItemGroup>
+
+</Project>

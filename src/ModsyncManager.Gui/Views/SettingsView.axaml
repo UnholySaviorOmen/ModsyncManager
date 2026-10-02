@@ -1,0 +1,247 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modsync.Gui.Shared.ViewModels"
+             x:Class="ModsyncManager.Gui.Views.SettingsView"
+             x:DataType="vm:SettingsVM">
+
+    <Grid RowDefinitions="Auto,*" Margin="20">
+
+        <!-- Header -->
+        <Grid Grid.Row="0"
+              ColumnDefinitions="*,Auto"
+              Margin="0,0,0,16">
+            <TextBlock Grid.Column="0"
+                       Text="Settings"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="20">
+
+                <!-- About -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="About"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <Grid ColumnDefinitions="Auto,*"
+                              RowDefinitions="Auto,Auto,Auto">
+
+                            <TextBlock Grid.Row="0" Grid.Column="0"
+                                       Text="Name"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,0,16,8" />
+                            <TextBlock Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding ProductName}"
+                                       Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="1" Grid.Column="0"
+                                       Text="Version"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,0,16,8" />
+                            <TextBlock Grid.Row="1" Grid.Column="1"
+                                       Text="{Binding Version}"
+                                       Margin="0,0,0,8" />
+
+                            <TextBlock Grid.Row="2" Grid.Column="0"
+                                       Text="License"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Margin="0,0,16,0" />
+                            <TextBlock Grid.Row="2" Grid.Column="1"
+                                       Text="{Binding License}" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- Nexus Mods (API key) -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Nexus Mods"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="12">
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Nexus.StatusText}"
+                                           Foreground="{Binding Nexus.StatusColor}"
+                                           FontSize="13"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="8">
+                                    <Button Content="Re-check"
+                                            Command="{Binding Nexus.RevalidateCommand}"
+                                            IsVisible="{Binding Nexus.HasSavedKey}"
+                                            Padding="12,6" />
+                                    <Button Content="Log out"
+                                            Command="{Binding Nexus.LogoutCommand}"
+                                            IsVisible="{Binding Nexus.HasSavedKey}"
+                                            Padding="12,6" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="{Binding Nexus.KeyFilePath}"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontFamily="Consolas,Menlo,monospace"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis" />
+
+                            <Border Background="{StaticResource SurfaceBaseBrush}"
+                                    BorderBrush="{StaticResource ErrorBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,8"
+                                    IsVisible="{Binding Nexus.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="{Binding Nexus.ErrorMessage}"
+                                           Foreground="{StaticResource ErrorBrush}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap" />
+                            </Border>
+
+                            <Grid ColumnDefinitions="*,Auto"
+                                  IsVisible="{Binding !Nexus.IsLoggedIn}">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding Nexus.ApiKeyInput}"
+                                         PasswordChar="•"
+                                         Watermark="Paste your Nexus API key"
+                                         Margin="0,0,8,0" />
+
+                                <Button Grid.Column="1"
+                                        Content="Save &amp; validate"
+                                        Command="{Binding Nexus.SaveAndValidateCommand}"
+                                        Padding="16,8" />
+                            </Grid>
+
+                            <StackPanel Orientation="Horizontal"
+                                        Spacing="8">
+                                <Button Content="Open Nexus API page"
+                                        Command="{Binding Nexus.OpenNexusApiPageCommand}"
+                                        Padding="12,6" />
+                                <TextBlock Text="Generate a Personal API Key on Nexus."
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="11"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Nexus Free Download -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Nexus Free Download"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="12">
+
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding NexusFreeDownload.StatusText}"
+                                           Foreground="{Binding NexusFreeDownload.StatusColor}"
+                                           FontSize="13"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="8">
+                                    <Button Content="Enable"
+                                            Command="{Binding NexusFreeDownload.RegisterCommand}"
+                                            IsVisible="{Binding !NexusFreeDownload.IsRegisteredToUs}"
+                                            IsEnabled="{Binding !NexusFreeDownload.IsBusy}"
+                                            Padding="12,6" />
+                                    <Button Content="Restore"
+                                            Command="{Binding NexusFreeDownload.RestoreCommand}"
+                                            IsEnabled="{Binding !NexusFreeDownload.IsBusy}"
+                                            Padding="12,6" />
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Text="{Binding NexusFreeDownload.HandlerPath}"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontFamily="Consolas,Menlo,monospace"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis" />
+
+                            <Border Background="{StaticResource SurfaceBaseBrush}"
+                                    BorderBrush="{StaticResource ErrorBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="10,8"
+                                    IsVisible="{Binding NexusFreeDownload.ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                <TextBlock Text="{Binding NexusFreeDownload.ErrorMessage}"
+                                           Foreground="{StaticResource ErrorBrush}"
+                                           FontSize="12"
+                                           TextWrapping="Wrap" />
+                            </Border>
+
+                            <TextBlock TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="11">
+                                When enabled, ModsyncManager registers itself as the handler for nxm:// links.
+                                Nexus Mods pages will send downloads directly to ModsyncManager.
+                                If another app (like Vortex) was handling nxm:// links, its registration is backed up
+                                and can be restored with the Restore button.
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Application settings -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Application settings"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="12">
+
+                            <CheckBox Content="Developer mode"
+                                      IsChecked="{Binding IsDevMode}" />
+
+                            <TextBlock Text="Shows Install, Pack, Verify, Logs and Cache in the sidebar."
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Footer -->
+                <TextBlock Text="{Binding Footer}"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="12"
+                           HorizontalAlignment="Center"
+                           Margin="0,16,0,0" />
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

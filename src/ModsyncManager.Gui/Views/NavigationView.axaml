@@ -1,0 +1,66 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modsync.Gui.Shared.ViewModels"
+             xmlns:conv="using:ModsyncManager.Gui.Converters"
+             x:Class="ModsyncManager.Gui.Views.NavigationView"
+             x:DataType="vm:NavigationVM">
+
+    <UserControl.Resources>
+        <conv:ScreenIconConverter x:Key="ScreenIconConverter" />
+    </UserControl.Resources>
+
+    <Grid RowDefinitions="*,Auto"
+          Background="{StaticResource SurfaceSidebarBrush}">
+
+        <!-- ============================================================
+         Навигация
+         ============================================================ -->
+        <ListBox Grid.Row="0"
+                 ItemsSource="{Binding Items}"
+                 SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Margin="12,8,12,0"
+                 Padding="0">
+            <ListBox.ItemContainerTheme>
+                <ControlTheme TargetType="ListBoxItem"
+                              BasedOn="{StaticResource {x:Type ListBoxItem}}">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,2" />
+                </ControlTheme>
+            </ListBox.ItemContainerTheme>
+
+            <ListBox.ItemTemplate>
+                <DataTemplate DataType="vm:NavigationItem">
+                    <Grid ColumnDefinitions="Auto,*"
+                          Height="40"
+                          Margin="6,0">
+
+                        <!-- Иконка -->
+                        <PathIcon Grid.Column="0"
+                                  Data="{Binding Screen, Converter={StaticResource ScreenIconConverter}}"
+                                  Width="18"
+                                  Height="18"
+                                  Foreground="{StaticResource TextSecondaryBrush}"
+                                  VerticalAlignment="Center"
+                                  Margin="10,0,12,0" />
+
+                        <!-- Текст -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Title}"
+                                   FontSize="14"
+                                   FontWeight="Medium"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <!-- Нижний отступ -->
+        <Border Grid.Row="1"
+                Height="12"
+                Background="Transparent" />
+
+    </Grid>
+</UserControl>

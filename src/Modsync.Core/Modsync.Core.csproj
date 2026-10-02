@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="System.IO.Hashing" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Data.Sqlite" />
+    <PackageReference Include="Polly" />
+  </ItemGroup>
+
+  <!--
+    Assets/7z/ (7z.exe, 7z.dll, License.txt) — сторонний компонент 7-Zip.
+    SevenZipExtractor резолвит его как AppContext.BaseDirectory/Assets/7z/7z.exe,
+    поэтому файлы должны оказаться рядом с любой выходной сборкой,
+    которая вызывает Extractor.
+
+    CopyToOutputDirectory="PreserveNewest" копирует файлы в bin/<cfg>/<tfm>/Assets/7z/
+    и (для .NET 8 SDK) транзитивно — во все проекты, ссылающиеся на Modsync.Core
+    через ProjectReference: Modsync.Pack, Modsync.Install, тестовые проекты,
+    GUI/CLI/handler exe.
+  -->
+  <ItemGroup>
+    <None Include="Assets\7z\**\*.*"
+          CopyToOutputDirectory="PreserveNewest"
+          Link="Assets\7z\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

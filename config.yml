@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/UnholySaviorOmen/ModsyncManager/blob/main/DOC.md
+    about: Data formats, pipeline, error handling — read this first.
+  - name: Project state and decisions
+    url: https://github.com/UnholySaviorOmen/ModsyncManager/blob/main/DEEPSEEK.md
+    about: Architecture, key decisions, and out-of-scope features.
+  - name: Contributing guide
+    url: https://github.com/UnholySaviorOmen/ModsyncManager/blob/main/CONTRIBUTING.md
+    about: How to build, test, and submit changes.
