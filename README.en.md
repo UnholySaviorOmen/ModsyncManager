@@ -123,6 +123,9 @@ which licenses its modlists under CC BY-NC-SA 4.0 (non-commercial).
 Both are legitimate choices for tool authors. ModsyncManager
 chooses neutrality.
 
+- **[PAYWALL.en.md](PAYWALL.en.md)** — policy on paywall mods and
+  `modlist.json`.
+
 ### Third-party components
 
 ModsyncManager bundles and depends on third-party components. See

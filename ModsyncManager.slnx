@@ -29,6 +29,8 @@
     <File Path="CONTRIBUTING.md" />
     <File Path="DEEPSEEK.md" />
     <File Path="DOC.md" />
+    <File Path="PAYWALL.en.md" />
+    <File Path="PAYWALL.md" />
     <File Path="README.en.md" />
 	<File Path="README.md" />
 	<File Path="LICENSE" />
