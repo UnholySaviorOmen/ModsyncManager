@@ -1,6 +1,10 @@
+// SPDX-FileCopyrightText: 2026 UnholySaviorOmen
+// SPDX-License-Identifier: GPL-3.0-only
+
 using Modsync.Core.Progress;
 using Modsync.Gui.Modules.Pack.Services;
 using Modsync.Pack;
+using Modsync.Pack.Models;
 
 namespace Modsync.Gui.Modules.Tests.Pack;
 
@@ -12,6 +16,7 @@ public sealed class FakePackRunner : IPackRunner
     public List<StepProgress> ReportedProgress { get; } = new();
     public CancellationToken LastToken { get; private set; }
     public string? LastConfigPath { get; private set; }
+    public PackConfigBuilderInput? LastConfigBuilderInput { get; private set; }
 
     public async Task<PackSummary> RunAsync(
         string configPath,
@@ -19,6 +24,29 @@ public sealed class FakePackRunner : IPackRunner
         CancellationToken ct)
     {
         LastConfigPath = configPath;
+        LastToken = ct;
+
+        if (Gate is not null)
+        {
+            using var reg = ct.Register(() => Gate.TrySetCanceled(ct));
+            await Gate.Task;
+        }
+
+        if (ExceptionToThrow is not null)
+            throw ExceptionToThrow;
+
+        if (ResultToReturn is null)
+            throw new InvalidOperationException("FakePackRunner.ResultToReturn is null.");
+
+        return ResultToReturn;
+    }
+
+    public async Task<PackSummary> RunFromConfigBuilderAsync(
+        PackConfigBuilderInput input,
+        IProgress<StepProgress> progress,
+        CancellationToken ct)
+    {
+        LastConfigBuilderInput = input;
         LastToken = ct;
 
         if (Gate is not null)

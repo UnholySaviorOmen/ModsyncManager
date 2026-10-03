@@ -4,6 +4,32 @@
              xmlns:controls="using:Modsync.Gui.Controls.Views"
              x:Class="Modsync.Gui.Modules.Pack.Views.PackView"
              x:DataType="vm:PackVM">
+
+    <UserControl.Styles>
+        <!-- Спиннер: дуга, вращающаяся вокруг центра.
+             PathIcon 24x24 viewBox, Path строится через SVG-подобный синтаксис.
+             RotateTransform.Angle анимируется 0 → 360 за 1 секунду. -->
+        <Style Selector="PathIcon.spinner">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Foreground"
+                    Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="RenderTransform">
+                <RotateTransform CenterX="7" CenterY="7" />
+            </Setter>
+            <Style.Animations>
+                <Animation Duration="0:0:1" IterationCount="INFINITE">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="RotateTransform.Angle" Value="0" />
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="RotateTransform.Angle" Value="360" />
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+    </UserControl.Styles>
+
     <Grid RowDefinitions="Auto,*" Margin="20">
 
         <!-- Header -->
@@ -22,6 +48,11 @@
                     VerticalAlignment="Top">
             <controls:FilePickerView DataContext="{Binding ConfigPicker}" />
 
+            <Button Content="Or create config from scratch…"
+                    Command="{Binding OpenCreateConfigCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="16,8" />
+
             <TextBlock Text="{Binding ErrorMessage}"
                        Foreground="{StaticResource WarningBrush}"
                        FontSize="12"
@@ -33,6 +64,13 @@
                     Padding="20,8" />
         </StackPanel>
 
+        <!-- Create Config (embedded, replaces Configuration) -->
+        <ContentControl Grid.Row="1"
+                        Content="{Binding CreateConfigVM}"
+                        IsVisible="{Binding IsCreatingConfig}"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch" />
+
         <!-- Packing -->
         <StackPanel Grid.Row="1"
                     Spacing="20"
@@ -42,18 +80,46 @@
             <TextBlock Text="{Binding StepName}"
                        FontSize="16"
                        HorizontalAlignment="Center" />
-            <TextBlock HorizontalAlignment="Center"
-                       Foreground="{StaticResource TextSecondaryBrush}"
-                       FontSize="12">
-                <Run Text="Step " />
-                <Run Text="{Binding CurrentStep}" />
-                <Run Text=" of " />
-                <Run Text="{Binding TotalSteps}" />
-            </TextBlock>
+
+            <!-- Step X of Y · Detail ⟳ -->
+            <StackPanel Orientation="Horizontal"
+                        Spacing="6"
+                        HorizontalAlignment="Center">
+
+                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center">
+                    <Run Text="Step " />
+                    <Run Text="{Binding CurrentStep}" />
+                    <Run Text=" of " />
+                    <Run Text="{Binding TotalSteps}" />
+                </TextBlock>
+
+                <TextBlock Text="·"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding HasDetail}" />
+
+                <TextBlock Text="{Binding Detail}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           VerticalAlignment="Center"
+                           IsVisible="{Binding HasDetail}" />
+
+                <PathIcon Classes="spinner"
+                          IsVisible="{Binding HasDetail}">
+                    <PathIcon.Data>
+                        <StreamGeometry>M 12 3 A 9 9 0 1 1 3 12</StreamGeometry>
+                    </PathIcon.Data>
+                </PathIcon>
+            </StackPanel>
+
             <ProgressBar Value="{Binding Percent}"
                          Minimum="0"
                          Maximum="100"
                          Height="6" />
+
             <Button Content="Cancel"
                     Command="{Binding CancelCommand}"
                     HorizontalAlignment="Center"

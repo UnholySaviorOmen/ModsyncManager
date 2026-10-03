@@ -1,0 +1,398 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Modsync.Gui.Modules.Pack.ViewModels"
+             x:Class="Modsync.Gui.Modules.Pack.Views.CreatePackConfigView"
+             x:DataType="vm:CreatePackConfigVM">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+
+        <!-- Header -->
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
+            <TextBlock Grid.Column="0"
+                       Text="Create Pack Config"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       VerticalAlignment="Center" />
+        </Grid>
+
+        <!-- Body -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="20">
+
+                <!-- ============================================================
+                     Instance
+                     ============================================================ -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Instance"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Instance folder"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="12" />
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding InstancePath}"
+                                         Watermark="Path to MO2 instance folder"
+                                         IsReadOnly="True"
+                                         Margin="0,0,8,0" />
+                                <Button Grid.Column="1"
+                                        Content="Browse…"
+                                        Command="{Binding BrowseInstanceCommand}"
+                                        Padding="14,8" />
+                            </Grid>
+
+                            <TextBlock Text="{Binding ErrorMessage}"
+                                       Foreground="{StaticResource ErrorBrush}"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"
+                                       IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+                            <TextBlock Text="Scanning instance…"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="11"
+                                       IsVisible="{Binding IsScanning}" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ============================================================
+                     Metadata
+                     ============================================================ -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Metadata"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="10">
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Name"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <TextBox Text="{Binding MetaName}"
+                                         Watermark="e.g. OmenRim 7" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Version"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <TextBox Text="{Binding MetaVersion}"
+                                         Watermark="Semver, e.g. 0.1.0" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Author"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <TextBox Text="{Binding MetaAuthor}"
+                                         Watermark="Your name or handle" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Game"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <TextBox Text="{Binding SelectedGame}"
+                                         Watermark="Nexus game domain, e.g. skyrimspecialedition" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Game version"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <TextBox Text="{Binding GameVersion}"
+                                         Watermark="e.g. 1.6.1170" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="MO2 profile"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <ComboBox ItemsSource="{Binding AvailableProfiles}"
+                                          SelectedItem="{Binding SelectedProfile}"
+                                          IsEnabled="{Binding HasProfiles}"
+                                          HorizontalAlignment="Stretch" />
+                                <TextBlock Text="{Binding ProfileHint}"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="11"
+                                           IsVisible="{Binding !HasProfiles}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ============================================================
+                     MO2 archive (fixed standard, editable-looking row)
+                     ============================================================ -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="MO2 archive"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="8">
+
+                            <StackPanel Spacing="2">
+                                <TextBlock Text="{Binding Mo2ArchiveDisplay}"
+                                           FontWeight="SemiBold"
+                                           FontFamily="Consolas,Menlo,monospace" />
+                                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="11">
+                                    <Run Text="Version " />
+                                    <Run Text="{Binding Mo2VersionDisplay}" />
+                                    <Run Text=" · " />
+                                    <Run Text="{Binding Mo2SizeDisplay}" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="URL"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <TextBox Text="{Binding Mo2UrlDisplay}"
+                                         IsReadOnly="True" />
+                            </StackPanel>
+
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Hash"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           FontSize="12" />
+                                <TextBox Text="{Binding Mo2HashDisplay}"
+                                         IsReadOnly="True" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ============================================================
+                     Extensions
+                     ============================================================ -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Extensions"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Paths relative to MO2/. Optional."
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="11" />
+
+                            <ItemsControl ItemsSource="{Binding Extensions}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:PathEntryVM">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding Value}"
+                                                     Watermark="e.g. plugins/fomod.dll"
+                                                     Margin="0,0,8,0" />
+                                            <Button Grid.Column="1"
+                                                    Content="×"
+                                                    Padding="12,6"
+                                                    Command="{Binding RemoveCommand}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Button Content="+ Add extension"
+                                    Command="{Binding AddExtensionCommand}"
+                                    HorizontalAlignment="Left"
+                                    Padding="12,6" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ============================================================
+                     Extras
+                     ============================================================ -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="Extras"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <Border Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderSubtleBrush}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Paths relative to Stock Game/. Optional."
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       FontSize="11" />
+
+                            <ItemsControl ItemsSource="{Binding Extras}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="vm:PathEntryVM">
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                            <TextBox Grid.Column="0"
+                                                     Text="{Binding Value}"
+                                                     Watermark="e.g. skse64_loader.exe"
+                                                     Margin="0,0,8,0" />
+                                            <Button Grid.Column="1"
+                                                    Content="×"
+                                                    Padding="12,6"
+                                                    Command="{Binding RemoveCommand}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Button Content="+ Add extra"
+                                    Command="{Binding AddExtraCommand}"
+                                    HorizontalAlignment="Left"
+                                    Padding="12,6" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ============================================================
+                     Archives without metadata
+                     ============================================================ -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="{Binding UnresolvedArchivesHeader}"
+                               FontSize="16"
+                               FontWeight="SemiBold" />
+
+                    <TextBlock Text="These archives have no .meta file. Provide a download source for each, or skip them."
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11"
+                               IsVisible="{Binding HasUnresolvedArchives}" />
+
+                    <TextBlock Text="All archives have metadata — nothing to fill here."
+                               Foreground="{StaticResource TextMutedBrush}"
+                               FontSize="11"
+                               IsVisible="{Binding !HasUnresolvedArchives}" />
+
+                    <ItemsControl ItemsSource="{Binding UnresolvedArchives}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:UnresolvedArchiveRowVM">
+                                <Border Background="{StaticResource SurfaceRaisedBrush}"
+                                        BorderBrush="{StaticResource BorderSubtleBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="16"
+                                        Margin="0,4"
+                                        Opacity="{Binding BorderOpacity}">
+                                    <StackPanel Spacing="10">
+
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="{Binding FileName}"
+                                                           FontWeight="SemiBold"
+                                                           FontFamily="Consolas,Menlo,monospace" />
+                                                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                                                           FontSize="11">
+                                                    <Run Text="{Binding SizeText}" />
+                                                    <Run Text=" · " />
+                                                    <Run Text="{Binding HashText}" />
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding StatusText}"
+                                                           Foreground="{StaticResource WarningBrush}"
+                                                           FontSize="11"
+                                                           TextWrapping="Wrap"
+                                                           IsVisible="{Binding IsExcluded}" />
+                                            </StackPanel>
+
+                                            <Button Grid.Column="1"
+                                                    Content="Skip"
+                                                    Command="{Binding ToggleExcludeCommand}"
+                                                    IsVisible="{Binding !IsExcluded}"
+                                                    Padding="12,6"
+                                                    VerticalAlignment="Top" />
+                                            <Button Grid.Column="1"
+                                                    Content="Unskip"
+                                                    Command="{Binding ToggleExcludeCommand}"
+                                                    IsVisible="{Binding IsExcluded}"
+                                                    Padding="12,6"
+                                                    VerticalAlignment="Top" />
+                                        </Grid>
+
+                                        <ItemsControl ItemsSource="{Binding Sources}"
+                                                      IsVisible="{Binding !IsExcluded}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="vm:ArchiveSourceRowVM">
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                                        <StackPanel Grid.Column="0" Spacing="4" Margin="0,0,8,0">
+                                                            <TextBlock Text="URL"
+                                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       FontSize="12" />
+                                                            <TextBox Text="{Binding Url}"
+                                                                     Watermark="https://..." />
+                                                            <TextBlock Text="Hash"
+                                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       FontSize="12"
+                                                                       Margin="0,4,0,0" />
+                                                            <TextBox Text="{Binding Hash}"
+                                                                     Watermark="xxh64:..." />
+                                                        </StackPanel>
+                                                        <Button Grid.Column="1"
+                                                                Content="×"
+                                                                Padding="12,6"
+                                                                VerticalAlignment="Top"
+                                                                Command="{Binding RemoveCommand}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <Button Content="+ Add mirror"
+                                                Command="{Binding AddSourceCommand}"
+                                                IsVisible="{Binding !IsExcluded}"
+                                                HorizontalAlignment="Left"
+                                                Padding="12,6" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto"
+              Margin="0,16,0,0">
+
+            <Button Grid.Column="0"
+                    Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Padding="20,8" />
+
+            <Button Grid.Column="2"
+                    Content="Save as template…"
+                    Command="{Binding SaveTemplateCommand}"
+                    Padding="20,8"
+                    Margin="0,0,8,0" />
+
+            <Button Grid.Column="3"
+                    Content="Create Config &amp; Pack"
+                    Command="{Binding CreateConfigCommand}"
+                    Padding="20,8" />
+        </Grid>
+    </Grid>
+</UserControl>

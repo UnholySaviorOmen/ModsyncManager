@@ -1,0 +1,161 @@
+// SPDX-FileCopyrightText: 2026 UnholySaviorOmen
+// SPDX-License-Identifier: GPL-3.0-only
+
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Modsync.Core.Models.Manifest.Sources;
+using Modsync.Core.Models.Pack;
+using Modsync.Pack.Models;
+
+namespace Modsync.Gui.Modules.Pack.ViewModels;
+
+/// <summary>
+/// Строка non-nexus архива в форме Create Pack Config.
+///
+/// Показывает имя архива, размер и хеш (read-only), а также даёт
+/// пользователю ввести один или несколько источников (url + hash).
+///
+/// Минимум один источник обязателен, если архив НЕ исключён.
+///
+/// IsExcluded — пользователь отказался указывать источник для этого
+/// архива. Такой архив не попадает в archiveSources, но остаётся
+/// физически в downloads/. Packer при сборке увидит его в Unresolved
+/// и, если он не используется ни одним модом — проигнорирует. Если
+/// используется — соответствующий мод окажется unmatched в
+/// __ModsyncManager_Output.
+/// </summary>
+public sealed partial class UnresolvedArchiveRowVM : ObservableObject
+{
+    public string FileName { get; }
+    public string SizeText { get; }
+    public string HashText { get; }
+
+    public ObservableCollection<ArchiveSourceRowVM> Sources { get; } = new();
+
+    [ObservableProperty]
+    private bool _isExcluded;
+
+    public event EventHandler? ValidationChanged;
+
+    public UnresolvedArchiveRowVM(UnresolvedArchiveInfo info)
+    {
+        FileName = info.FileName;
+        SizeText = FormatSize(info.Size);
+        HashText = info.Hash.ToString();
+
+        AddInitialSource(info.Hash.ToString());
+    }
+
+    [RelayCommand]
+    private void AddSource()
+    {
+        if (IsExcluded) return;
+
+        var source = new ArchiveSourceRowVM(
+            onRemove: RemoveSourceInternal,
+            canRemove: () => Sources.Count > 1)
+        {
+            Url = "",
+            Hash = HashText,
+        };
+
+        source.ValidationChanged += (_, _) =>
+            ValidationChanged?.Invoke(this, EventArgs.Empty);
+
+        Sources.Add(source);
+        NotifyRemoveCommands();
+        ValidationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    [RelayCommand]
+    private void ToggleExclude()
+    {
+        IsExcluded = !IsExcluded;
+    }
+
+    partial void OnIsExcludedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(BorderOpacity));
+        OnPropertyChanged(nameof(StatusText));
+        ValidationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Opacity для Border строки: 0.5 для исключённых, 1.0 для обычных.
+    /// Простая альтернатива конвертеру bool → double.
+    /// </summary>
+    public double BorderOpacity => IsExcluded ? 0.5 : 1.0;
+
+    /// <summary>
+    /// Текст статуса под именем архива. Пустая строка для обычных,
+    /// предупреждение для исключённых.
+    /// </summary>
+    public string StatusText => IsExcluded
+        ? "Skipped — will not be added to archiveSources"
+        : "";
+
+    private void AddInitialSource(string hash)
+    {
+        var source = new ArchiveSourceRowVM(
+            onRemove: RemoveSourceInternal,
+            canRemove: () => Sources.Count > 1)
+        {
+            Url = "",
+            Hash = hash,
+        };
+
+        source.ValidationChanged += (_, _) =>
+            ValidationChanged?.Invoke(this, EventArgs.Empty);
+
+        Sources.Add(source);
+    }
+
+    private void RemoveSourceInternal(ArchiveSourceRowVM source)
+    {
+        if (Sources.Count <= 1) return;
+        if (!Sources.Contains(source)) return;
+
+        Sources.Remove(source);
+        NotifyRemoveCommands();
+        ValidationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void NotifyRemoveCommands()
+    {
+        foreach (var s in Sources)
+            s.NotifyCanRemoveChanged();
+    }
+
+    /// <summary>
+    /// Архив валиден, если он исключён (ничего проверять не надо)
+    /// или у него есть хотя бы один валидный источник.
+    /// </summary>
+    public bool IsValid =>
+        IsExcluded || (Sources.Count > 0 && Sources.All(s => s.IsValid));
+
+    public PackArchiveSource ToPackArchiveSource()
+    {
+        if (IsExcluded)
+            throw new InvalidOperationException(
+                $"Cannot build archive source for excluded archive '{FileName}'.");
+
+        var sourceRefs = Sources
+            .Select(s => (ArchiveSourceRef)s.ToSourceRef())
+            .ToList();
+
+        return new PackArchiveSource
+        {
+            Archive = FileName,
+            Sources = sourceRefs,
+        };
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+}

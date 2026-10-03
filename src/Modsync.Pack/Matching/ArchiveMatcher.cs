@@ -14,37 +14,16 @@ namespace Modsync.Pack.Matching;
 /// <summary>
 /// Построение индексов архивов и матчинг файлов по хешу.
 ///
-/// Используется MatchStep, MatchExtensionsStep, MatchExtrasStep (12.13.6).
+/// Используется MatchStep, MatchExtensionsStep, MatchExtrasStep.
 ///
 /// Жизненный цикл:
-///   1. Создать объект (передать ArchiveIndex + DownloadsPath + extractor).
-///   2. Вызвать BuildAsync(ct) — распаковывает все Resolved-архивы,
-///      строит byHashPath/byHash/byPath.
-///   3. Многократно вызывать TryMatch(file) — вернёт директиву или null.
+///   1. Создать объект.
+///   2. Вызвать BuildAsync(ct, progress) — распаковывает все
+///      Resolved-архивы, строит byHashPath/byHash/byPath.
+///   3. Многократно вызывать TryMatch(file).
 ///
-/// Индексы:
-///   ByHashPath — точное совпадение (hash + relativePath) → entry.
-///   ByHash     — совпадение только по hash. Значение — список кандидатов,
-///                отсортированный по (archiveId, relativePath) для
-///                детерминизма.
-///   ByPath     — relativePath → {hash → archiveId}.
-///
-/// Детерминизм при дубликатах:
-///   Если в разных архивах есть одинаковые (hash, relativePath) —
-///   побеждает минимальный archiveId (Ordinal). Аналогично для
-///   ByPath[path][hash]. Это гарантирует, что результат не зависит
-///   от порядка обхода Resolved-массивов.
-///
-/// Правило матчинга:
-///   1. Если (hash, relativePath) есть в ByHashPath → Exact.
-///   2. Иначе если hash есть в ByHash → ByHash (первый кандидат).
-///   3. Иначе → null.
-///
-/// Отмена:
-///   OperationCanceledException из ExtractAsync пробрасывается наружу
-///   без обёртки — BuildAsync не «глотает» отмену, а прерывает
-///   весь pipeline. Прочие ошибки (битый архив, ошибка 7z) — skip
-///   с логированием.
+/// Прогресс: если передан IProgress&lt;(int, int)&gt;, репортит
+/// (processed, total) после каждого распакованного архива.
 /// </summary>
 internal sealed class ArchiveMatcher
 {
@@ -71,13 +50,16 @@ internal sealed class ArchiveMatcher
     }
 
     /// <summary>
-    /// Построить индексы. Можно вызывать один раз; повторный вызов — no-op.
-    /// Extract-ит все Resolved-архивы.
+    /// Построить индексы. Повторный вызов — no-op.
     ///
-    /// При отмене бросает OperationCanceledException как есть — pipeline
-    /// должен прерваться.
+    /// progress — опциональный репорт (processed, total) после
+    /// каждого архива.
+    ///
+    /// При отмене бросает OperationCanceledException как есть.
     /// </summary>
-    public async Task BuildAsync(CancellationToken ct)
+    public async Task BuildAsync(
+        CancellationToken ct,
+        IProgress<(int Processed, int Total)>? progress = null)
     {
         if (_indexes is not null)
             return;
@@ -91,6 +73,9 @@ internal sealed class ArchiveMatcher
 
         int processed = 0;
         int total = _archiveIndex.Resolved.Count;
+
+        // Стартовый репорт: 0 / N.
+        progress?.Report((0, total));
 
         foreach (var archive in _archiveIndex.Resolved)
         {
@@ -111,6 +96,7 @@ internal sealed class ArchiveMatcher
                 _logger.LogWarning(
                     "ArchiveMatcher: archive file not found (skipping): {Path}",
                     archivePath);
+                progress?.Report((processed, total));
                 continue;
             }
 
@@ -124,7 +110,6 @@ internal sealed class ArchiveMatcher
             }
             catch (OperationCanceledException)
             {
-                // Отмена — не «ошибка распаковки». Прерываем Build.
                 throw;
             }
             catch (Exception ex)
@@ -132,6 +117,7 @@ internal sealed class ArchiveMatcher
                 _logger.LogError(ex,
                     "ArchiveMatcher: failed to extract '{Name}'. Skipping.",
                     archive.Name);
+                progress?.Report((processed, total));
                 continue;
             }
 
@@ -165,7 +151,6 @@ internal sealed class ArchiveMatcher
                     Size = size,
                 };
 
-                // ByHashPath: детерминизм — минимальный archiveId.
                 var key = (hash, relativePath);
                 if (byHashPath.TryGetValue(key, out var existingExact))
                 {
@@ -177,7 +162,6 @@ internal sealed class ArchiveMatcher
                     byHashPath[key] = entry;
                 }
 
-                // ByHash: список кандидатов (сортируется в конце).
                 if (!byHash.TryGetValue(hash, out var list))
                 {
                     list = new List<IndexEntry>(1);
@@ -185,7 +169,6 @@ internal sealed class ArchiveMatcher
                 }
                 list.Add(entry);
 
-                // ByPath: детерминизм — минимальный archiveId.
                 if (!byPath.TryGetValue(relativePath, out var hashesByPath))
                 {
                     hashesByPath = new Dictionary<XxHash64Value, string>();
@@ -202,9 +185,10 @@ internal sealed class ArchiveMatcher
                     hashesByPath[hash] = archive.Id;
                 }
             }
+
+            progress?.Report((processed, total));
         }
 
-        // Детерминизм: сортируем списки кандидатов.
         foreach (var list in byHash.Values)
         {
             list.Sort(static (a, b) =>
@@ -223,17 +207,12 @@ internal sealed class ArchiveMatcher
             byHash.Count, byHashPath.Count, byPath.Count);
     }
 
-    /// <summary>
-    /// Матчит файл. Возвращает директиву или null.
-    /// Требует, чтобы BuildAsync был вызван.
-    /// </summary>
     public FromArchiveDirective? TryMatch(ScannedFile file)
     {
         if (_indexes is null)
             throw new InvalidOperationException(
                 "ArchiveMatcher.BuildAsync must be called before TryMatch.");
 
-        // 1. Точное совпадение (hash, path).
         if (_indexes.ByHashPath.TryGetValue(
                 (file.Hash, file.RelativePath), out var exact))
         {
@@ -247,7 +226,6 @@ internal sealed class ArchiveMatcher
             };
         }
 
-        // 2. Совпадение по hash — первый кандидат.
         if (_indexes.ByHash.TryGetValue(file.Hash, out var candidates)
             && candidates.Count > 0)
         {
@@ -262,13 +240,8 @@ internal sealed class ArchiveMatcher
             };
         }
 
-        // 3. Нет матча.
         return null;
     }
-
-    // ------------------------------------------------------------------
-    //  Внутренние типы
-    // ------------------------------------------------------------------
 
     internal sealed class IndexEntry
     {

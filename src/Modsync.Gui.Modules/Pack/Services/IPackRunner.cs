@@ -3,6 +3,7 @@
 
 using Modsync.Core.Progress;
 using Modsync.Pack;
+using Modsync.Pack.Models;
 
 namespace Modsync.Gui.Modules.Pack.Services;
 
@@ -18,7 +19,7 @@ namespace Modsync.Gui.Modules.Pack.Services;
 public interface IPackRunner
 {
     /// <summary>
-    /// Запустить pack. Возвращает сводку результата.
+    /// Запустить pack из готового config-файла.
     ///
     /// Бросает:
     ///   - OperationCanceledException (или AggregateException с cancellation)
@@ -27,6 +28,26 @@ public interface IPackRunner
     /// </summary>
     Task<PackSummary> RunAsync(
         string configPath,
+        IProgress<StepProgress> progress,
+        CancellationToken ct);
+
+    /// <summary>
+    /// Запустить pack из формы «Create Pack Config».
+    ///
+    /// Реализация:
+    ///   1. Собирает PackConfig через PackConfigBuilder.Build(input).
+    ///   2. Пишет временный config-файл в корень инстанса
+    ///      (&lt;instancePath&gt;/modsyncmanager-pack.temp.json).
+    ///      Именно в корень инстанса, а не в %TEMP% — потому что
+    ///      config.instance.path == "." и pipeline ищет MO2/, downloads/
+    ///      относительно папки config.
+    ///   3. Запускает PackPipeline.
+    ///   4. Удаляет temp-файл в finally.
+    ///
+    /// Бросает то же, что RunAsync.
+    /// </summary>
+    Task<PackSummary> RunFromConfigBuilderAsync(
+        PackConfigBuilderInput input,
         IProgress<StepProgress> progress,
         CancellationToken ct);
 }

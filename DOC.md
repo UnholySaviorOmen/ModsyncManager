@@ -29,6 +29,7 @@
 8. [Nexus game domain](#nexus-game-domain)
 9. [Формат файлов MO2](#формат-файлов-mo2)
 10. [Пайплайн: создание сборки](#пайплайн-создание-сборки)
+    10.1. [Pack без config](#pack-без-config)
 11. [Пайплайн: установка сборки](#пайплайн-установка-сборки)
 12. [Пайплайн: обновление сборки](#пайплайн-обновление-сборки)
 13. [Работа с Nexus Mods](#работа-с-nexus-mods)
@@ -243,7 +244,10 @@ Slug, ArchiveId, абстракции, `SevenZipExtractor`, `TempWorkspace`,
 `Mo2ArchiveBuilder`) — построение индексов архивов и матчинг файлов
 по хешу. Один экземпляр `ArchiveMatcher` на весь pipeline.
 `PackInputFactory`, `PackSummary` + `PackSummaryBuilder`.
-DI-extension: `AddModsyncPack`.
+**`PackConfigBuilder`** — сервис для GUI-формы «Create Pack Config»:
+сканирует `MO2/downloads/` на non-nexus архивы, читает профили,
+собирает `PackConfig` из пользовательского ввода + хардкода
+`mo2`-секции. DI-extension: `AddModsyncPack`.
 
 **Modsync.Install:** `InstallPipeline` + 11 шагов; `MirrorDownloader`,
 `DownloaderRegistry`; `VerifyPipeline`. `InstallInputFactory`,
@@ -820,8 +824,11 @@ Packer запускается через `PackPipeline.ExecuteAsync`. В GUI —
 5. `ScanExtensionsStep` — сканирует `config.Mo2.Extensions[]`.
    `EntryScanResult`.
 6. `ScanExtrasStep` — симметричен, для `config.StockGame.Extras[]`.
-7. `BuildArchiveMatcher` — `ArchiveMatcher.BuildAsync(ct)` — один
-   раз на pipeline.
+7. `BuildArchiveMatcher` — `ArchiveMatcher.BuildAsync(ct, progress)` —
+   один раз на pipeline. Репортит `IProgress<(int, int)>` после
+   каждого архива. `PackPipeline` оборачивает это в
+   `StepProgress.Detail` формата `Building index: N / M`
+   (аналогично `SyncArchives` и `SyncMods` в installer-е).
 8. `MatchStep` — сопоставляет файлы модов с архивами. Unmatched
    модов → `__ModsyncManager_Output/MO2/mods/<ModName>/<path>`.
    `meta.ini` мода → `ModMetas`. Возвращает `MatchResult`.
@@ -847,6 +854,41 @@ Packer запускается через `PackPipeline.ExecuteAsync`. В GUI —
   архивами побеждает минимальный `archiveId` (Ordinal).
 - Отмена: `BuildAsync` пробрасывает `OperationCanceledException`.
   Прочие ошибки — skip с логированием.
+
+### 10.1. Pack без config
+
+Помимо обычного пути (готовый `modsyncmanager-pack.json`), Packer
+поддерживает сценарий «Pack без config»: пользователь заполняет
+форму в GUI, config генерируется программно.
+
+**Форма «Create Pack Config»** (встроена в экран Pack):
+
+- **Instance folder** — выбор папки инстанса (через `IFilePickerService`).
+- **Metadata** — `Name`, `Version`, `Author`, `Game`, `GameVersion` (все поля обязательны, валидация через `NameValidator` / `SemverValidator`).
+- **MO2 profile** — ComboBox реальных профилей из `MO2/profiles/`. Если профилей нет — поле пустое, используется `Default`.
+- **MO2 archive** — секция с хардкодом: MO2 2.5.2, официальный GitHub-релиз, `xxh64:E574E05EB6C470AD`. Read-only.
+- **Extensions / Extras** — опциональные списки путей. Формат — строки. Кнопка «+ Add».
+- **Archives without metadata** — список non-nexus архивов из `downloads/` (без валидного `.meta`). Для каждого — поля `URL` + `Hash` (поддерживается несколько зеркал через «+ Add mirror»). Кнопки **Skip / Unskip** — если пользователь не может указать источник.
+
+**Что происходит при нажатии «Create Config & Pack»:**
+
+1. Форма собирает `PackConfigBuilderInput` (все поля + отфильтрованные non-skipped архивы).
+2. `PackRunner.RunFromConfigBuilderAsync` собирает `PackConfig` через `PackConfigBuilder.Build`.
+3. Сериализует через `PackConfigJson.Serialize` в временный файл в **корне инстанса** (`modsyncmanager-pack.temp.json`) — не в `%TEMP%`, потому что `config.instance.path == "."` и pipeline ищет `MO2/`, `downloads/` относительно папки config.
+4. Запускает обычный `PackPipeline.ExecuteAsync`.
+5. Удаляет temp-файл в `finally`.
+
+**Хардкод `mo2`-секции** (стандарт для генерируемых манифестов):
+
+| Поле | Значение |
+|---|---|
+| `mo2.version` | `2.5.2` |
+| `mo2.archive` | `Mod.Organizer-2.5.2.7z` |
+| `mo2.source.type` | `mirror` |
+| `mo2.source.url` | `https://github.com/ModOrganizer2/modorganizer/releases/download/v2.5.2/Mod.Organizer-2.5.2.7z` |
+| `mo2.source.hash` | `xxh64:E574E05EB6C470AD` |
+
+**`Save as template…`** — сохранение формы в `modsyncmanager-pack.json` (через `IFilePickerService.SaveFileAsync`). Если пользователь передумал сохранять — форма остаётся открытой.
 
 ### Этап 1.4. Итог
 

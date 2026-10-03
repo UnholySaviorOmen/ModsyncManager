@@ -455,4 +455,49 @@ public class ArchiveMatcherTests : IDisposable
         var act = async () => await matcher.BuildAsync(cts.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
+
+    [Fact]
+    public async Task BuildAsync_WithProgress_ReportsIncrementingCounter()
+    {
+        var content1 = new byte[] { 1 };
+        var content2 = new byte[] { 2 };
+        var content3 = new byte[] { 3 };
+
+        CreateZip("a.zip", ("file1.txt", content1));
+        CreateZip("b.zip", ("file2.txt", content2));
+        CreateZip("c.zip", ("file3.txt", content3));
+
+        var e1 = MakeArchiveEntry("a", "a.zip");
+        var e2 = MakeArchiveEntry("b", "b.zip");
+        var e3 = MakeArchiveEntry("c", "c.zip");
+
+        var index = new ArchiveIndex
+        {
+            Resolved = new[] { e1, e2, e3 },
+            Unresolved = Array.Empty<UnresolvedArchive>(),
+        };
+
+        var extractor = new SevenZipExtractor(
+            NullLogger<SevenZipExtractor>.Instance);
+
+        var matcher = new ArchiveMatcher(
+            index, _downloadsDir, extractor, _hashCache,
+            NullLogger<ArchiveMatcher>.Instance);
+
+        var reports = new List<(int Processed, int Total)>();
+        var progress = new Progress<(int, int)>(p => reports.Add(p));
+
+        await matcher.BuildAsync(CancellationToken.None, progress);
+
+        // Ожидаем: стартовый (0, 3), затем 3 репорта после каждого архива.
+        // Progress<T> в BCL кеширует в SynchronizationContext — в тесте
+        // его нет, поэтому вызовы идут синхронно в том же потоке.
+        reports.Should().HaveCount(4);
+        reports[0].Should().Be((0, 3));
+        reports[^1].Should().Be((3, 3));
+
+        var processedValues = reports.Select(r => r.Processed).Distinct().OrderBy(x => x).ToList();
+        processedValues.Should().Equal(0, 1, 2, 3);
+    }
+
 }

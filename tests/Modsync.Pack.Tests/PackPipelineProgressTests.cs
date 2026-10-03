@@ -191,14 +191,13 @@ public class PackPipelineProgressTests : IDisposable
         var input = PackInputFactory.Create(_configPath, ParallelOptions());
         await pipeline.ExecuteAsync(input, CancellationToken.None, progress);
 
-        // Должно быть 14 репортов — по одному на каждый StepName.
-        progress.Reports.Should().HaveCount(14);
+        // Репортов может быть больше 14: BuildArchiveMatcher репортит
+        // Detail (N / M) после каждого архива, как SyncArchives и
+        // SyncMods в installer-е. Проверяем структуру, а не количество.
 
-        // StepIndex идёт 1..14.
-        progress.Reports.Select(r => r.StepIndex)
-            .Should().Equal(Enumerable.Range(1, 14));
+        progress.Reports.Should().NotBeEmpty();
 
-        // TotalSteps везде одинаковый.
+        // Все TotalSteps == 14.
         progress.Reports.Select(r => r.TotalSteps)
             .Should().AllBeEquivalentTo(14);
 
@@ -207,11 +206,28 @@ public class PackPipelineProgressTests : IDisposable
             .Should().NotContainNulls()
             .And.OnlyContain(s => !string.IsNullOrWhiteSpace(s));
 
-        // Первый и последний — стабильные имена.
-        progress.Reports[0].StepName.Should().Be("ReadConfig");
-        progress.Reports[^1].StepName.Should().Be("WriteManifest");
-    }
+        // Каждый StepIndex 1..14 представлен хотя бы одним репортом.
+        var distinctIndices = progress.Reports
+            .Select(r => r.StepIndex)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToList();
 
+        distinctIndices.Should().Equal(Enumerable.Range(1, 14));
+
+        // Первый репорт каждого StepIndex — в порядке возрастания.
+        var firstReportByStep = progress.Reports
+            .GroupBy(r => r.StepIndex)
+            .OrderBy(g => g.Key)
+            .Select(g => g.First())
+            .ToList();
+
+        firstReportByStep.Select(r => r.StepIndex)
+            .Should().BeInAscendingOrder();
+
+        firstReportByStep[0].StepName.Should().Be("ReadConfig");
+        firstReportByStep[^1].StepName.Should().Be("WriteManifest");
+    }
     [Fact]
     public async Task Execute_WithoutProgress_StillWorks()
     {

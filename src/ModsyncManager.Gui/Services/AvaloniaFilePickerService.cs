@@ -49,6 +49,34 @@ public sealed class AvaloniaFilePickerService : IFilePickerService
         return folders.Count > 0 ? folders[0].Path.LocalPath : null;
     }
 
+    public async Task<string?> SaveFileAsync(
+        string title,
+        string suggestedName,
+        string? filterHint = null)
+    {
+        var window = GetMainWindow();
+        if (window is null) return null;
+
+        var options = new FilePickerSaveOptions
+        {
+            Title = title,
+            SuggestedFileName = suggestedName,
+            ShowOverwritePrompt = true,
+        };
+
+        if (!string.IsNullOrWhiteSpace(filterHint))
+        {
+            var pattern = filterHint.StartsWith('.') ? "*" + filterHint : filterHint;
+            options.FileTypeChoices = new[]
+            {
+                new FilePickerFileType(filterHint) { Patterns = new[] { pattern } },
+            };
+        }
+
+        var file = await window.StorageProvider.SaveFilePickerAsync(options);
+        return file?.Path.LocalPath;
+    }
+
     private static Window? GetMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

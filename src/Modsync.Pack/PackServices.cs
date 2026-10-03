@@ -44,6 +44,9 @@ public static class PackServices
 
         services.TryAddSingleton<PackPipeline>();
 
+        // --- PackConfigBuilder (для GUI «Create Pack Config») ---
+        services.TryAddSingleton<PackConfigBuilder>();
+
         return services;
     }
 }

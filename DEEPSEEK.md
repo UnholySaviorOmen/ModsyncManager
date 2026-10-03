@@ -1,7 +1,7 @@
 # ModsyncManager — состояние проекта и план работ
 
-**Обновлено:** 2026-10-02
-**Всего тестов:** ~1129, 0 failed
+**Обновлено:** 2026-10-04
+**Всего тестов:** 1193, 0 failed
 **Текущий блок:** все запланированные блоки закрыты
 **Следующий блок:** (не определён)
 
@@ -129,6 +129,17 @@ DEEPSEEK.md — только по запросу.
 - **v0.2.0, блок 2.1** — persist кеша хешей (2026-09-30).
 - **v0.2.0, блок 3.1** — прогресс Install/Pack (2026-10-01).
 - **v0.2.0, блок 3.2** — UX-ревизия Settings (2026-10-01).
+
+### Дополнительно
+- ✅ **Блок 35.1** — `PackConfigBuilder` в `Modsync.Pack` (сервис
+  сканирования downloads/ + сборки config из формы).
+- ✅ **Блок 35.2** — `CreatePackConfigVM` + `CreatePackConfigView`
+  в `Modsync.Gui.Modules/Pack/` (форма «Create Pack Config»).
+- ✅ **Блок 35.3** — интеграция формы в `PackVM` / `PackView`
+  (embedded, не overlay) + Skip/Unskip для unresolved-архивов +
+  прогресс `BuildArchiveMatcher`.
+- ✅ `tools/dump-repo.bat` — заголовок `# Firelink` → `# ModsyncManager`.
+- ✅ `Directory.Build.props` — снят BOM (иначе MSB4024 в .NET SDK 10).
 
 ### В работе
 
@@ -546,6 +557,8 @@ Cyberpunk 2077, Starfield, Baldur's Gate 3). Ограничение —
 - **Не делать sharing архивов между инстансами.**
 - **Не делать кеш содержимого архивов (`archive_files`).**
 - **Не делать автопатчи / autoPack / inlinePatterns.**
+- **Не использовать `Grid.ColumnSpacing` / `Grid.RowSpacing`** —
+  этих свойств нет в Avalonia 11.
 
 ---
 
@@ -736,6 +749,20 @@ Owner-тип не может быть static-классом (CS0718).
 новом решении — **явные ссылки**. Аналогично `Modsync.Gui.Modules`
 явно ссылается на `Modsync.Install` и `Modsync.Pack`.
 
+### Про `Progress<T>` в тестах
+
+`Progress<T>` в BCL маршалит callback через `SynchronizationContext`.
+В xUnit-тестах его обычно нет — callback идёт синхронно, но это
+**не гарантия**. Если в тесте проверяется точное количество
+репортов `IProgress<T>` — использовать **свой** `IProgress<T>`
+с `List<T>` под `lock`, а не BCL `Progress<T>`. Иначе флакает.
+
+### Про `Grid.ColumnSpacing` / `Grid.RowSpacing`
+
+В Avalonia 11 у `Grid` **нет** этих свойств. Только `RowDefinitions`
+и `ColumnDefinitions`. Для зазоров использовать `StackPanel.Spacing`
+или `Margin` у дочерних элементов.
+
 ---
 
 ## Технический долг
@@ -798,6 +825,34 @@ Owner-тип не может быть static-классом (CS0718).
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
+- **2026-10-04** — GUI: Pack без config + прогресс индексации.
+  - **`PackConfigBuilder`** (`Modsync.Pack`) — новый публичный
+    сервис. Сканирует `MO2/downloads/` на предмет non-nexus
+    архивов (без `.meta`), читает список профилей MO2, собирает
+    `PackConfig` из пользовательского ввода + хардкода
+    `mo2`-секции (MO2 2.5.2, официальный GitHub-релиз).
+  - **`Create Pack Config`** — форма, встроенная в экран Pack
+    (embedded, не overlay). Поля: `meta` (Name, Version, Author,
+    Game, GameVersion), Profile (ComboBox реальных профилей),
+    Extensions, Extras, список non-nexus архивов.
+  - **Skip / Unskip для unresolved-архивов.** Пользователь может
+    отказаться указывать источник для архива — тогда архив не
+    попадает в `archiveSources`, но остаётся в `downloads/`.
+    Packer разберётся: если архив не используется — проигнорирует;
+    если используется — мод окажется unmatched.
+  - **`Save as template`** — сохранение текущей формы в
+    `modsyncmanager-pack.json` (через `IFilePickerService.SaveFileAsync`).
+  - **Прогресс `BuildArchiveMatcher`** — репорт `Detail` формата
+    `Building index: N / M` через `IProgress<(int, int)>`, как
+    `SyncArchivesStep` / `SyncModsStep` в installer-е. Показывается
+    в UI: `Step 7 of 14 · Building index: 12 / 68 ⟳`.
+  - **`PackVM`** — новое состояние `IsCreatingConfig` (показывает
+    форму вместо Configuration). `ExecutePackAsync` — общий метод
+    для pack из config-файла и из формы.
+  - **Тесты:** +64 теста (PackConfigBuilderTests, CreatePackConfigVMTests,
+    UnresolvedArchiveRowVMTests, ArchiveSourceRowVMTests, PackVMTests
+    расширен). Итого **1193**.
+  - **Итог:** `dotnet test ModsyncManager.slnx` — 1193 теста, 0 failed.
 - **2026-10-02** — **Переименование Firelink → ModsyncManager
   завершено.**
   - **Все namespace и assembly:** `Modsync.*` (библиотеки),

@@ -166,7 +166,15 @@ public sealed class PackPipeline
             _loggerFactory.CreateLogger<ArchiveMatcher>());
 
         progress?.Report(new StepProgress(7, totalSteps, StepNames[6]));
-        await matcher.BuildAsync(ct);
+
+        var matcherDetail = progress is null
+            ? null
+            : new Progress<(int Processed, int Total)>(p =>
+                progress.Report(new StepProgress(
+                    7, totalSteps, StepNames[6],
+                    $"Building index: {p.Processed} / {p.Total}")));
+
+        await matcher.BuildAsync(ct, matcherDetail);
         ct.ThrowIfCancellationRequested();
 
         progress?.Report(new StepProgress(8, totalSteps, StepNames[7]));

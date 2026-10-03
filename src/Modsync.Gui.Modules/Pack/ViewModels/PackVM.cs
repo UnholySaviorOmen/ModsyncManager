@@ -11,6 +11,8 @@ using Modsync.Gui.Shared.State;
 using Modsync.Gui.Shared.ViewModels;
 using Modsync.Gui.Shared.ViewModels.Controls;
 using Modsync.Pack;
+using Modsync.Pack.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Modsync.Gui.Modules.Pack.ViewModels;
@@ -18,6 +20,7 @@ namespace Modsync.Gui.Modules.Pack.ViewModels;
 public sealed partial class PackVM : ProgressViewModel
 {
     private readonly IPackRunner _runner;
+    private readonly IServiceProvider _sp;
     private readonly ILogger<PackVM> _logger;
     private CancellationTokenSource? _cts;
 
@@ -42,16 +45,28 @@ public sealed partial class PackVM : ProgressViewModel
     [ObservableProperty]
     private string? _errorMessage;
 
+    // ------------------------------------------------------------------
+    //  Create Pack Config (embedded, not overlay)
+    // ------------------------------------------------------------------
+
+    [ObservableProperty]
+    private CreatePackConfigVM? _createConfigVM;
+
+    [ObservableProperty]
+    private bool _isCreatingConfig;
+
     public FilePickerVM ConfigPicker { get; }
     public LogVM Log { get; }
 
     public PackVM(
         IPackRunner runner,
+        IServiceProvider sp,
         IFilePickerService picker,
         LogVM log,
         ILogger<PackVM> logger)
     {
         _runner = runner;
+        _sp = sp;
         _logger = logger;
         Log = log;
 
@@ -75,8 +90,74 @@ public sealed partial class PackVM : ProgressViewModel
         // В UI кнопка Home заменена на Done (3.9.6).
     }
 
+    // ------------------------------------------------------------------
+    //  Pack (обычный путь, с ConfigPicker)
+    // ------------------------------------------------------------------
+
     [RelayCommand(CanExecute = nameof(CanPack))]
     private async Task PackAsync()
+    {
+        await ExecutePackAsync((progress, ct) =>
+            _runner.RunAsync(ConfigPicker.Path!, progress, ct));
+    }
+
+    private bool CanPack()
+        => State == PackState.Configuration
+           && !IsCreatingConfig
+           && ConfigPicker.IsValid;
+
+    // ------------------------------------------------------------------
+    //  Create Pack Config
+    // ------------------------------------------------------------------
+
+    [RelayCommand]
+    private void OpenCreateConfig()
+    {
+        if (IsCreatingConfig)
+            return;
+
+        var vm = _sp.GetRequiredService<CreatePackConfigVM>();
+        vm.ConfigCreated += OnConfigCreated;
+        vm.Cancelled += OnCreateConfigCancelled;
+
+        CreateConfigVM = vm;
+        IsCreatingConfig = true;
+    }
+
+    private void OnConfigCreated(PackConfigBuilderInput input)
+    {
+        // Закрыть форму синхронно.
+        CloseCreateConfig();
+
+        // Запустить pack асинхронно. ExecutePackAsync сам ловит
+        // все исключения.
+        _ = ExecutePackAsync((progress, ct) =>
+            _runner.RunFromConfigBuilderAsync(input, progress, ct));
+    }
+
+    private void OnCreateConfigCancelled()
+    {
+        CloseCreateConfig();
+    }
+
+    private void CloseCreateConfig()
+    {
+        if (CreateConfigVM is not null)
+        {
+            CreateConfigVM.ConfigCreated -= OnConfigCreated;
+            CreateConfigVM.Cancelled -= OnCreateConfigCancelled;
+        }
+
+        CreateConfigVM = null;
+        IsCreatingConfig = false;
+    }
+
+    // ------------------------------------------------------------------
+    //  Shared pack execution
+    // ------------------------------------------------------------------
+
+    private async Task ExecutePackAsync(
+        Func<IProgress<StepProgress>, CancellationToken, Task<PackSummary>> run)
     {
         State = PackState.Packing;
         UpdateVisibility();
@@ -84,13 +165,11 @@ public sealed partial class PackVM : ProgressViewModel
         _cts = new CancellationTokenSource();
 
         var progress = new Progress<StepProgress>(p =>
-            Report(p.StepIndex, p.TotalSteps, p.StepName));
+            Report(p.StepIndex, p.TotalSteps, p.StepName, p.Detail));
 
         try
         {
-            Summary = await _runner.RunAsync(
-                ConfigPicker.Path!, progress, _cts.Token);
-
+            Summary = await run(progress, _cts.Token);
             State = PackState.Success;
         }
         catch (Exception ex) when (CancellationHelper.IsCancellation(ex))
@@ -113,8 +192,9 @@ public sealed partial class PackVM : ProgressViewModel
         }
     }
 
-    private bool CanPack()
-        => State == PackState.Configuration && ConfigPicker.IsValid;
+    // ------------------------------------------------------------------
+    //  Cancel
+    // ------------------------------------------------------------------
 
     [RelayCommand(CanExecute = nameof(CanCancel))]
     private void Cancel()
@@ -124,6 +204,10 @@ public sealed partial class PackVM : ProgressViewModel
 
     private bool CanCancel() => State == PackState.Packing;
 
+    // ------------------------------------------------------------------
+    //  Done
+    // ------------------------------------------------------------------
+
     [RelayCommand]
     private void Done()
     {
@@ -132,6 +216,10 @@ public sealed partial class PackVM : ProgressViewModel
         State = PackState.Configuration;
     }
 
+    // ------------------------------------------------------------------
+    //  State machine
+    // ------------------------------------------------------------------
+
     partial void OnStateChanged(PackState value)
     {
         UpdateVisibility();
@@ -139,9 +227,15 @@ public sealed partial class PackVM : ProgressViewModel
         CancelCommand.NotifyCanExecuteChanged();
     }
 
+    partial void OnIsCreatingConfigChanged(bool value)
+    {
+        UpdateVisibility();
+        PackCommand.NotifyCanExecuteChanged();
+    }
+
     private void UpdateVisibility()
     {
-        IsConfiguring = State == PackState.Configuration;
+        IsConfiguring = State == PackState.Configuration && !IsCreatingConfig;
         IsPacking = State == PackState.Packing;
         IsSuccess = State == PackState.Success;
         IsFailure = State == PackState.Failure;

@@ -23,4 +23,15 @@ public interface IFilePickerService
     /// Открыть диалог выбора папки. Возвращает null, если пользователь отменил.
     /// </summary>
     Task<string?> PickFolderAsync(string title);
+
+    /// <summary>
+    /// Открыть диалог сохранения файла. Возвращает null, если пользователь отменил.
+    /// </summary>
+    /// <param name="title">Заголовок диалога.</param>
+    /// <param name="suggestedName">Имя файла по умолчанию.</param>
+    /// <param name="filterHint">Опциональная подсказка для фильтра (расширение).</param>
+    Task<string?> SaveFileAsync(
+        string title,
+        string suggestedName,
+        string? filterHint = null);
 }
