@@ -45,10 +45,6 @@ public sealed partial class PackVM : ProgressViewModel
     [ObservableProperty]
     private string? _errorMessage;
 
-    // ------------------------------------------------------------------
-    //  Create Pack Config (embedded, not overlay)
-    // ------------------------------------------------------------------
-
     [ObservableProperty]
     private CreatePackConfigVM? _createConfigVM;
 
@@ -84,21 +80,21 @@ public sealed partial class PackVM : ProgressViewModel
         };
     }
 
-    public void SetNavigateHome(Action navigateHome)
-    {
-        // Оставлено для совместимости с INavigationAware.
-        // В UI кнопка Home заменена на Done (3.9.6).
-    }
+    public void SetNavigateHome(Action navigateHome) { }
 
     // ------------------------------------------------------------------
-    //  Pack (обычный путь, с ConfigPicker)
+    //  Pack (обычный путь)
     // ------------------------------------------------------------------
 
     [RelayCommand(CanExecute = nameof(CanPack))]
     private async Task PackAsync()
     {
+        var configPath = ConfigPicker.Path!;
+
         await ExecutePackAsync((progress, ct) =>
-            _runner.RunAsync(ConfigPicker.Path!, progress, ct));
+            _runner.RunAsync(configPath, progress, ct));
+
+        await MaybeShowPatchDialogAsync();
     }
 
     private bool CanPack()
@@ -126,13 +122,16 @@ public sealed partial class PackVM : ProgressViewModel
 
     private void OnConfigCreated(PackConfigBuilderInput input)
     {
-        // Закрыть форму синхронно.
         CloseCreateConfig();
+        _ = ExecuteAndMaybeShowPatchAsync(input);
+    }
 
-        // Запустить pack асинхронно. ExecutePackAsync сам ловит
-        // все исключения.
-        _ = ExecutePackAsync((progress, ct) =>
+    private async Task ExecuteAndMaybeShowPatchAsync(PackConfigBuilderInput input)
+    {
+        await ExecutePackAsync((progress, ct) =>
             _runner.RunFromConfigBuilderAsync(input, progress, ct));
+
+        await MaybeShowPatchDialogAsync();
     }
 
     private void OnCreateConfigCancelled()
@@ -150,6 +149,45 @@ public sealed partial class PackVM : ProgressViewModel
 
         CreateConfigVM = null;
         IsCreatingConfig = false;
+    }
+
+    // ------------------------------------------------------------------
+    //  Unmatched dialog
+    // ------------------------------------------------------------------
+
+    private async Task MaybeShowPatchDialogAsync()
+    {
+        if (State != PackState.Success)
+            return;
+
+        if (Summary is null)
+            return;
+
+        var unmatched = Summary.UnmatchedFiles;
+        if (unmatched <= 0)
+            return;
+
+        // instancePath берём из Summary — это правильный путь,
+        // независимо от того, откуда пришёл config (файл или форма).
+        var instancePath = Summary.InstancePath;
+
+        try
+        {
+            var dialog = _sp.GetService<IPatchDialogService>();
+            if (dialog is null)
+            {
+                _logger.LogDebug(
+                    "IPatchDialogService not registered — skipping dialog");
+                return;
+            }
+
+            await dialog.ShowAsync(instancePath, unmatched);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to show patch dialog; continuing");
+        }
     }
 
     // ------------------------------------------------------------------
@@ -192,10 +230,6 @@ public sealed partial class PackVM : ProgressViewModel
         }
     }
 
-    // ------------------------------------------------------------------
-    //  Cancel
-    // ------------------------------------------------------------------
-
     [RelayCommand(CanExecute = nameof(CanCancel))]
     private void Cancel()
     {
@@ -204,10 +238,6 @@ public sealed partial class PackVM : ProgressViewModel
 
     private bool CanCancel() => State == PackState.Packing;
 
-    // ------------------------------------------------------------------
-    //  Done
-    // ------------------------------------------------------------------
-
     [RelayCommand]
     private void Done()
     {
@@ -215,10 +245,6 @@ public sealed partial class PackVM : ProgressViewModel
         ErrorMessage = null;
         State = PackState.Configuration;
     }
-
-    // ------------------------------------------------------------------
-    //  State machine
-    // ------------------------------------------------------------------
 
     partial void OnStateChanged(PackState value)
     {

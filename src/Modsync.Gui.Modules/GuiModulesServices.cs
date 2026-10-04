@@ -21,7 +21,6 @@ public static class GuiModulesServices
         services.AddSingleton<IPackRunner, PackRunner>();
         services.AddSingleton<PackVM>();
 
-        // Create Pack Config — transient: каждый раз новая форма.
         services.AddTransient<CreatePackConfigVM>();
 
         services.AddSingleton<IVerifyRunner, VerifyRunner>();

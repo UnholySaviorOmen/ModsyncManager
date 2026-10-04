@@ -141,6 +141,7 @@ public partial class App : Application
         services.AddSingleton<IFilePickerService, AvaloniaFilePickerService>();
         services.AddSingleton<IProcessLauncher, ShellProcessLauncher>();
         services.AddSingleton<IScreenFactory, ScreenFactory>();
+        services.AddSingleton<IPatchDialogService, AvaloniaPatchDialogService>();
 
         services.AddSingleton<ISettingsStore, SettingsStore>();
 

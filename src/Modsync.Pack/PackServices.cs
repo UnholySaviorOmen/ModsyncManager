@@ -47,6 +47,9 @@ public static class PackServices
         // --- PackConfigBuilder (для GUI «Create Pack Config») ---
         services.TryAddSingleton<PackConfigBuilder>();
 
+        // --- PatchArchiveBuilder (для GUI patch-архива) ---
+        services.TryAddSingleton<PatchArchiveBuilder>();
+
         return services;
     }
 }

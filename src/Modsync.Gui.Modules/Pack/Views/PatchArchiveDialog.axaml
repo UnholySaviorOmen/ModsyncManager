@@ -1,0 +1,135 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Modsync.Gui.Modules.Pack.ViewModels"
+        x:Class="Modsync.Gui.Modules.Pack.Views.PatchArchiveDialog"
+        x:DataType="vm:PatchArchiveDialogVM"
+        Title="Unmatched files"
+        Width="600"
+        Height="400"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
+            <TextBlock Text="Unmatched files"
+                       FontSize="20"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="Some files could not be matched to any archive."
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       FontSize="13" />
+        </StackPanel>
+
+        <!-- Body -->
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+
+                <Border Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource BorderSubtleBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16">
+                    <StackPanel Spacing="12">
+
+                        <TextBlock Text="{Binding Message}"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   TextWrapping="Wrap" />
+
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="Output folder"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       FontSize="12" />
+                            <TextBlock Text="{Binding OutputPath}"
+                                       FontFamily="Consolas,Menlo,monospace"
+                                       FontSize="11"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   FontSize="11">
+                            You can ignore these files, open the folder to
+                            inspect them manually, or create a patch archive
+                            that bundles them into MO2/downloads/. On the
+                            next pack, the patch archive will be seen as a
+                            regular unresolved archive — provide a download
+                            source for it or skip it.
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Success message -->
+                <Border Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource SuccessBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16"
+                        IsVisible="{Binding HasPatch}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Patch archive created"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource SuccessBrush}" />
+
+                        <TextBlock Text="{Binding PatchCreatedMessage}"
+                                   TextWrapping="Wrap"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   FontSize="12" />
+
+                        <TextBlock Text="{Binding PatchPath}"
+                                   FontFamily="Consolas,Menlo,monospace"
+                                   FontSize="11"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Error message -->
+                <Border Background="{StaticResource SurfaceRaisedBrush}"
+                        BorderBrush="{StaticResource ErrorBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="16"
+                        IsVisible="{Binding HasError}">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="Error"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource ErrorBrush}" />
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   TextWrapping="Wrap"
+                                   FontFamily="Consolas,Menlo,monospace"
+                                   FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto"
+              Margin="0,16,0,0">
+
+            <Button Grid.Column="0"
+                    Content="Ignore"
+                    Command="{Binding IgnoreCommand}"
+                    Padding="20,8" />
+
+            <Button Grid.Column="2"
+                    Content="Open output folder"
+                    Command="{Binding OpenFolderCommand}"
+                    Padding="20,8"
+                    Margin="0,0,8,0"
+                    IsEnabled="{Binding !IsBusy}" />
+
+            <Button Grid.Column="3"
+                    Content="Create patch archive"
+                    Command="{Binding CreatePatchCommand}"
+                    Padding="20,8"
+                    IsEnabled="{Binding !IsBusy}" />
+        </Grid>
+    </Grid>
+</Window>
