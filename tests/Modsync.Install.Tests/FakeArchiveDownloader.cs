@@ -16,7 +16,9 @@ namespace Modsync.Install.Tests;
 ///   - NexusSourceRef   → "nexus:{game}:{modId}:{fileId}"
 ///
 /// Если identifier не найден — throws HttpRequestException.
-/// Опционально можно настроить "throw on Nth call" для тестов retry.
+/// Опционально можно настроить:
+///   - FailOnCall(n)   — бросить HttpRequestException на N-й попытке.
+///   - AlwaysThrow(ex) — бросить заданное исключение при каждом вызове.
 /// </summary>
 public sealed class FakeArchiveDownloader : IArchiveDownloader
 {
@@ -37,6 +39,13 @@ public sealed class FakeArchiveDownloader : IArchiveDownloader
 
     public int CallCount => _callCount;
 
+    /// <summary>
+    /// Если задано — DownloadAsync бросает это исключение при каждом
+    /// вызове (до Increment). Используется для тестов «постоянных»
+    /// ошибок (NexusAuthenticationException).
+    /// </summary>
+    public Exception? AlwaysThrow { get; set; }
+
     public void SetContent(string identifier, byte[] content)
     {
         _content[identifier] = content;
@@ -49,6 +58,9 @@ public sealed class FakeArchiveDownloader : IArchiveDownloader
 
     public Task<Stream> DownloadAsync(ArchiveSourceRef source, CancellationToken ct)
     {
+        if (AlwaysThrow is not null)
+            throw AlwaysThrow;
+
         Interlocked.Increment(ref _callCount);
         var currentCall = _callCount;
 
@@ -69,6 +81,15 @@ public sealed class FakeArchiveDownloader : IArchiveDownloader
 
         return Task.FromResult<Stream>(new MemoryStream(bytes, writable: false));
     }
+
+    /// <summary>
+    /// Default false. Для тестов «постоянных» ошибок
+    /// переопределяется через <see cref="PermanentType"/>.
+    /// </summary>
+    public Type? PermanentType { get; set; }
+
+    public bool IsPermanentFailure(Exception ex)
+        => PermanentType?.IsInstanceOfType(ex) == true;
 
     public static string IdentifierOf(ArchiveSourceRef source) => source switch
     {

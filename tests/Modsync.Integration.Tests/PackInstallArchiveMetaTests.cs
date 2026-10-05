@@ -19,6 +19,7 @@ using Modsync.Pack;
 using Modsync.Pack.Steps;
 using Modsync.Platform.MO2.Readers;
 using Modsync.Platform.MO2.Writers;
+using Modsync.Platform.Nexus;
 
 namespace Modsync.Integration.Tests;
 
@@ -230,6 +231,9 @@ public class PackInstallArchiveMetaTests : IDisposable
 
         return new InstallPipeline(
             new ReadManifestStep(NullLogger<ReadManifestStep>.Instance),
+            new PreflightNexusAuthStep(
+                new NexusApiKeyProviderStub(),
+                NullLogger<PreflightNexusAuthStep>.Instance),
             new ResolveTargetStep(NullLogger<ResolveTargetStep>.Instance),
             new ValidateTargetStep(NullLogger<ValidateTargetStep>.Instance),
             new BootstrapInstanceStep(NullLogger<BootstrapInstanceStep>.Instance),

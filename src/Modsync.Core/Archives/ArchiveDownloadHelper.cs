@@ -30,6 +30,13 @@ namespace Modsync.Core.Archives;
 ///
 /// Никаких информационных логов внутри: сообщение о конкретном шаге
 /// (например, «Downloaded SkyUI.7z») — дело вызывающего.
+///
+/// Retry:
+///   - MaxAttemptsPerSource = 3 (2 повтора).
+///   - Delay = 2 сек, exponential backoff.
+///   - «Постоянные» ошибки (downloader.IsPermanentFailure возвращает true)
+///     не retry-аются. Пример: NexusAuthenticationException — ключ не
+///     появится от повторной попытки.
 /// </summary>
 public static class ArchiveDownloadHelper
 {
@@ -61,6 +68,11 @@ public static class ArchiveDownloadHelper
                 MaxRetryAttempts = MaxAttemptsPerSource - 1,
                 Delay = RetryDelay,
                 BackoffType = DelayBackoffType.Exponential,
+                // Не retry-ить на «постоянных» ошибках (например,
+                // NexusAuthenticationException). Retry бессмыслен и
+                // добавляет 2+4 секунды задержки на каждый архив.
+                ShouldHandle = new PredicateBuilder()
+                    .Handle<Exception>(ex => !downloader.IsPermanentFailure(ex)),
                 OnRetry = args =>
                 {
                     logger.LogWarning(

@@ -4,6 +4,7 @@
 using System.IO.Compression;
 using System.Text;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using Modsync.Core.Abstractions;
 using Modsync.Core.Archives;
 using Modsync.Core.Archives.Extraction;
@@ -16,7 +17,7 @@ using Modsync.Install.Downloaders;
 using Modsync.Install.Steps;
 using Modsync.Pack;
 using Modsync.Pack.Steps;
-using Microsoft.Extensions.Logging.Abstractions;
+using Modsync.Platform.Nexus;
 
 namespace Modsync.Integration.Tests;
 
@@ -356,6 +357,9 @@ public class PackInstallExtensionsExtrasTests : IDisposable
 
         return new InstallPipeline(
             new ReadManifestStep(NullLogger<ReadManifestStep>.Instance),
+            new PreflightNexusAuthStep(
+                new NexusApiKeyProviderStub(),
+                NullLogger<PreflightNexusAuthStep>.Instance),
             new ResolveTargetStep(NullLogger<ResolveTargetStep>.Instance),
             new ValidateTargetStep(NullLogger<ValidateTargetStep>.Instance),
             new BootstrapInstanceStep(NullLogger<BootstrapInstanceStep>.Instance),

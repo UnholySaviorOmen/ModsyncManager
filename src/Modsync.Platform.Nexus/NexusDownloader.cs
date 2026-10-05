@@ -58,6 +58,13 @@ public sealed class NexusDownloader : IArchiveDownloader
 
     public string SourceType => "nexus";
 
+    /// <summary>
+    /// NexusAuthenticationException — постоянная ошибка.
+    /// Ключ не появится от повторной попытки. Retry бессмыслен.
+    /// </summary>
+    public bool IsPermanentFailure(Exception ex)
+        => ex is NexusAuthenticationException;
+
     public async Task<Stream> DownloadAsync(
         ArchiveSourceRef source, CancellationToken ct)
     {

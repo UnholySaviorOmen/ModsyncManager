@@ -1,7 +1,7 @@
 # ModsyncManager — состояние проекта и план работ
 
 **Обновлено:** 2026-10-05
-**Всего тестов:** 1259, 0 failed
+**Всего тестов:** 1269, 0 failed
 **Текущий блок:** все запланированные блоки закрыты
 **Следующий блок:** (не определён)
 
@@ -192,6 +192,16 @@ DEEPSEEK.md — только по запросу.
   и заполняет `ArchiveEntry.Meta`.
 - ✅ **Блок 39.6** — `ArchiveMetaWritten` в Success-панели
   `InstallView.axaml`.
+- ✅ **Блок 40.1** — Nexus auth: не retry-ить `NexusAuthenticationException`.
+  `IArchiveDownloader.IsPermanentFailure(Exception)` — default `false`;
+  `NexusDownloader` возвращает `true` для `NexusAuthenticationException`.
+  `ArchiveDownloadHelper` через Polly `ShouldHandle` пропускает retry
+  для постоянных ошибок. `SyncArchivesStep` при провале всех source-ов
+  даёт внятное сообщение про Settings → Nexus.
+- ✅ **Блок 40.2** — pre-flight проверка Nexus-ключа.
+  `PreflightNexusAuthStep` — новый шаг pipeline (2-й по счёту).
+  Если в манифесте есть `NexusSourceRef` и ключа нет — падаем сразу,
+  с сообщением «Open Settings → Nexus». Installer стал 13 шагов.
 
 ### В работе
 
@@ -861,6 +871,22 @@ Owner-тип не может быть static-классом (CS0718).
 автор мог положить вручную, packer в следующий раз прочитает
 и включит в манифест.
 
+### Про Nexus auth и retry
+
+`ArchiveDownloadHelper` retry-ит все ошибки по умолчанию. Но
+`NexusAuthenticationException` — **постоянная** ошибка: ключ не
+появится от повторной попытки. Retry только тратит время
+(2+4 секунды на каждый архив).
+
+Решение: `IArchiveDownloader.IsPermanentFailure(ex)` — default
+`false`, `NexusDownloader` возвращает `true` для
+`NexusAuthenticationException`. Polly `ShouldHandle` пропускает
+retry.
+
+Pre-flight (`PreflightNexusAuthStep`) ловит это ещё раньше:
+если в манифесте есть `NexusSourceRef` и ключа нет — падаем
+до bootstrap-а. Пользователь видит ошибку мгновенно.
+
 ---
 
 ## Технический долг
@@ -923,6 +949,35 @@ Owner-тип не может быть static-классом (CS0718).
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
+- - **2026-10-05** — Nexus auth UX: pre-flight + no-retry (блок 40).
+  - **Проблема:** при install без Nexus-ключа `SyncArchivesStep`
+    пытался скачать N nexus-архивов параллельно, каждый падал
+    с `NexusAuthenticationException`, Polly делал 3 retry
+    (2+4 секунды задержки), и пользователь получал невнятное
+    «SkyUI failed: all sources failed» без подсказки, что делать.
+  - **40.1** — `ArchiveDownloadHelper` не retry-ит «постоянные»
+    ошибки. В `IArchiveDownloader` добавлен метод
+    `IsPermanentFailure(Exception) -> bool`, default `false`.
+    `NexusDownloader` возвращает `true` для
+    `NexusAuthenticationException`. Polly `ShouldHandle`
+    пропускает retry. `SyncArchivesStep` при провале всех
+    source-ов проверяет: если хоть одна ошибка содержит
+    «Nexus API key is not set» или «NexusAuthenticationException» —
+    бросает с сообщением «Open Settings → Nexus, paste your
+    API key, and retry. If you're a Free user, enable Free
+    Download in Settings → Nexus Free Download.»
+  - **40.2** — `PreflightNexusAuthStep` — новый шаг installer-а,
+    второй по счёту (после `ReadManifestStep`). Проверяет:
+    если в манифесте (`archives[]` или `mo2.archive`) есть
+    `NexusSourceRef`, а `INexusApiKeyProvider.TryGetApiKey()`
+    возвращает null — падает сразу, до всех bootstrap-шагов.
+    Installer стал 13 шагов. `StepNames[1] = "PreflightNexusAuth"`,
+    все последующие StepIndex сдвинулись на +1.
+  - **Тесты:** +6 (`PreflightNexusAuthStepTests` — 6 сценариев:
+    no nexus sources, key present, key missing, empty key,
+    MO2 archive with nexus, canceled token) + 4 в других
+    (SyncArchivesStepTests, NexusDownloaderTests).
+  - **Итог:** `dotnet test` — 1269 тестов, 0 failed.
 - **2026-10-05** — Полировка после блока 38 (блок 39).
   - **39.1** — `DOC.md` §6.6: обратная ссылка на §6.5.
     Единый INI-парсер `MetaIniReader` для `.meta` архивов

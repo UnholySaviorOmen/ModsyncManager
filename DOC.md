@@ -263,8 +263,10 @@ patch-архива из `__ModsyncManager_Output/`. **`IndexArchivesStep`**
 читает `.meta` архивов через `MetaIniReader` и сохраняет
 `ArchiveEntry.Meta` в манифесте. DI-extension: `AddModsyncPack`.
 
-**Modsync.Install:** `InstallPipeline` + 12 шагов; `MirrorDownloader`,
-`DownloaderRegistry`; `GenerateArchiveMetaStep` — восстановление
+**Modsync.Install:** `InstallPipeline` + 13 шагов; `MirrorDownloader`,
+`DownloaderRegistry`; `PreflightNexusAuthStep` — pre-flight проверка
+наличия Nexus-ключа (если в манифесте есть `NexusSourceRef`);
+`GenerateArchiveMetaStep` — восстановление
 `downloads/<archive>.meta` для nexus-архивов (если
 `ArchiveEntry.Meta != null`). `VerifyPipeline` — read-only проверка,
 включая `.meta` для архивов. `InstallInputFactory`, `InstallSummary`
@@ -1023,34 +1025,38 @@ Installer запускается через `InstallPipeline.ExecuteAsync`. В G
 
 **Расположение инстанса:** `<exeDir>/Instances/<normalize(meta.name)>/`.
 
-**Pipeline (12 шагов):**
+**Pipeline (13 шагов):**
 
 1. `ReadManifestStep` — читает `modlist.json`, валидирует
    `schemaVersion`.
-2. `ResolveTargetStep` — вычисляет `instancePath`, копирует
+2. `PreflightNexusAuthStep` — если в манифесте есть `NexusSourceRef`
+   и API-ключ Nexus не установлен — падаем с сообщением
+   «Open Settings → Nexus». Если nexus-источников нет — no-op.
+3. `ResolveTargetStep` — вычисляет `instancePath`, копирует
    манифест в `<instancePath>/modlist.json`.
-3. `ValidateTargetStep` — 4 проверки (корень диска, системные
+4. `ValidateTargetStep` — 4 проверки (корень диска, системные
    папки, папка exe, права записи).
-4. `BootstrapInstanceStep` — создаёт `MO2/`, `MO2/downloads/`,
+5. `BootstrapInstanceStep` — создаёт `MO2/`, `MO2/downloads/`,
    `MO2/mods/`, `MO2/profiles/`, `MO2/plugins/`, `MO2/tools/`,
    `Stock Game/`.
-5. `BootstrapMo2Step` — самодостаточный: скачивает MO2-архив
+6. `BootstrapMo2Step` — самодостаточный: скачивает MO2-архив
    (если нет по хешу), распаковывает в `MO2/`.
-6. `SyncArchivesStep` — сканирует `downloads/` → hash → path,
+7. `SyncArchivesStep` — сканирует `downloads/` → hash → path,
    для каждого mod-архива скачивает или находит локально.
-7. `GenerateArchiveMetaStep` — для каждого `ArchiveEntry`
+8. `GenerateArchiveMetaStep` — для каждого `ArchiveEntry`
    с `Meta != null` пишет `downloads/<archive>.meta`. Не удаляет
    `.meta`, если файл есть, а `Meta == null`. Идемпотентен.
-8. `ExecuteExtensionsStep` — раскладывает `mo2.extensions[]`
+9. `ExecuteExtensionsStep` — раскладывает `mo2.extensions[]`
    в `MO2/`.
-9. `ExecuteExtrasStep` — раскладывает `stockGame.extras[]` в
-   `Stock Game/`.
-10. `SyncModsStep` — reconcile `mods/`.
-11. `GenerateMetaIniStep` — reconcile `meta.ini`.
-12. `RegenerateProfileStep` — генерирует `modlist.txt`/`plugins.txt`/
+10. `ExecuteExtrasStep` — раскладывает `stockGame.extras[]` в
+    `Stock Game/`.
+11. `SyncModsStep` — reconcile `mods/`.
+12. `GenerateMetaIniStep` — reconcile `meta.ini`.
+13. `RegenerateProfileStep` — генерирует `modlist.txt`/`plugins.txt`/
     `loadorder.txt`.
 
 **Разделение ответственности:**
+- **Pre-flight Nexus auth** — в `PreflightNexusAuthStep`.
 - **MO2-логика** — в `BootstrapMo2Step`.
 - **Логика `downloads/` (архивы)** — в `SyncArchivesStep`.
 - **Логика `.meta` архивов** — в `GenerateArchiveMetaStep`.
@@ -1451,6 +1457,9 @@ cache». Очищает таблицу `file_hashes`. `VACUUM` возвраща�
 
 | Ситуация | Поведение |
 |---|---|
+| В манифесте есть `NexusSourceRef`, ключ отсутствует | `PreflightNexusAuthStep` → ошибка «Open Settings → Nexus» (до bootstrap-а) |
+| В манифесте есть `NexusSourceRef`, ключ есть | `PreflightNexusAuthStep` → пропуск |
+| В манифесте нет `NexusSourceRef` | `PreflightNexusAuthStep` → пропуск (ключ не нужен) |
 | `schemaVersion` не поддерживается | Ошибка |
 | `meta.name` не проходит `NameValidator` | Ошибка |
 | Target — корень / системная папка / папка exe | Ошибка |
@@ -1460,7 +1469,7 @@ cache». Очищает таблицу `file_hashes`. `VACUUM` возвраща�
 | Архив с другим именем, но тем же хешем | Использовать |
 | Архив отсутствует | Скачать по sources |
 | Hash не совпадает | Удалить `.part`, следующий источник |
-| Все источники провалились | Ошибка |
+| Все источники провалились | Ошибка. Если хоть один — `NexusAuthenticationException`, сообщение про Settings → Nexus |
 | Мод `[NoDelete]` | Пропустить |
 | Мод-сепаратор (`#...`) | Пропустить |
 | `mods[].meta != null` | `MetaIniWriter.WriteFile` |

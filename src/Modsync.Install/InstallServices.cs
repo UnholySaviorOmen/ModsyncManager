@@ -76,6 +76,7 @@ public static class InstallServices
 
         // --- Install steps ---
         services.TryAddSingleton<ReadManifestStep>();
+        services.TryAddSingleton<PreflightNexusAuthStep>();
         services.TryAddSingleton<ResolveTargetStep>();
         services.TryAddSingleton<ValidateTargetStep>();
         services.TryAddSingleton<BootstrapInstanceStep>();

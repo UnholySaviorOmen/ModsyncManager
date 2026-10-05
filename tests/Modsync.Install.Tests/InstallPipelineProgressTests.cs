@@ -191,6 +191,9 @@ public class InstallPipelineProgressTests : IDisposable
 
         return new InstallPipeline(
             new ReadManifestStep(NullLogger<ReadManifestStep>.Instance),
+            new PreflightNexusAuthStep(
+                new NexusApiKeyProviderStub(),
+                NullLogger<PreflightNexusAuthStep>.Instance),
             new ResolveTargetStep(NullLogger<ResolveTargetStep>.Instance),
             new ValidateTargetStep(NullLogger<ValidateTargetStep>.Instance),
             new BootstrapInstanceStep(NullLogger<BootstrapInstanceStep>.Instance),
@@ -252,21 +255,21 @@ public class InstallPipelineProgressTests : IDisposable
         progress.Reports.Should().NotBeEmpty();
 
         // Все TotalSteps == 12.
-        progress.Reports.Should().OnlyContain(r => r.TotalSteps == 12);
+        progress.Reports.Should().OnlyContain(r => r.TotalSteps == 13);
 
         // StepName непустой у всех.
         progress.Reports.Select(r => r.StepName)
             .Should().NotContainNulls()
             .And.OnlyContain(s => !string.IsNullOrWhiteSpace(s));
 
-        // Каждый StepIndex 1..12 представлен хотя бы одним репортом.
+        // Каждый StepIndex 1..13 представлен хотя бы одним репортом.
         var distinctIndices = progress.Reports
             .Select(r => r.StepIndex)
             .Distinct()
             .OrderBy(x => x)
             .ToList();
 
-        distinctIndices.Should().Equal(Enumerable.Range(1, 12));
+        distinctIndices.Should().Equal(Enumerable.Range(1, 13));
 
         // Первый репорт каждого StepIndex — в порядке возрастания.
         var firstReportByStep = progress.Reports
@@ -323,8 +326,8 @@ public class InstallPipelineProgressTests : IDisposable
             progress);
 
         // Отбираем только репорты формата "Downloading: N / M"
-        // (SyncArchives, StepIndex 6). Не путаем с SyncMods
-        // ("Syncing: N / M mods", StepIndex 9).
+        // (SyncArchives, StepIndex 7). Не путаем с SyncMods
+        // ("Syncing: N / M mods", StepIndex 11).
         var downloadReports = progress.Reports
             .Where(r => r.Detail is not null
                      && r.Detail.StartsWith("Downloading: ", StringComparison.Ordinal))
@@ -335,7 +338,7 @@ public class InstallPipelineProgressTests : IDisposable
 
         downloadReports.Should().AllSatisfy(r =>
         {
-            r.StepIndex.Should().Be(6);
+            r.StepIndex.Should().Be(7);
             r.StepName.Should().Be("SyncArchives");
         });
 
@@ -366,7 +369,7 @@ public class InstallPipelineProgressTests : IDisposable
             progress);
 
         // Отбираем только репорты формата "Syncing: N / M mods"
-        // (SyncMods, StepIndex 10).
+        // (SyncMods, StepIndex 11).
         var syncReports = progress.Reports
             .Where(r => r.Detail is not null
                      && r.Detail.StartsWith("Syncing: ", StringComparison.Ordinal))
@@ -377,7 +380,7 @@ public class InstallPipelineProgressTests : IDisposable
 
         syncReports.Should().AllSatisfy(r =>
         {
-            r.StepIndex.Should().Be(10);
+            r.StepIndex.Should().Be(11);
             r.StepName.Should().Be("SyncMods");
         });
 

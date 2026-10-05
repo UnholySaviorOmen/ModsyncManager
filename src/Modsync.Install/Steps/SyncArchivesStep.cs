@@ -241,6 +241,22 @@ public sealed class SyncArchivesStep : IStep<SyncArchivesStep.Input, SyncArchive
             }
         }
 
+        // Если хоть одна ошибка — «нет Nexus-ключа», даём понятное
+        // сообщение. Это самая частая причина провала на чистой машине.
+        var authFailure = errors.Any(e =>
+            e.Contains("Nexus API key is not set", StringComparison.OrdinalIgnoreCase)
+            || e.Contains("NexusAuthenticationException", StringComparison.OrdinalIgnoreCase));
+
+        if (authFailure)
+        {
+            throw new InvalidOperationException(
+                $"Failed to sync archive '{archive.Name}': " +
+                $"Nexus API key is not set. " +
+                $"Open Settings → Nexus, paste your API key, and retry. " +
+                $"If you're a Free user, enable Free Download in " +
+                $"Settings → Nexus Free Download.");
+        }
+
         var reason = anySourceSkipped
             ? "some sources skipped (no downloader)"
             : "all sources failed";

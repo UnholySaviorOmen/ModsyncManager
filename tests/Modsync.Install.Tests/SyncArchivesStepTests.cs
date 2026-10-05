@@ -527,4 +527,45 @@ public class SyncArchivesStepTests : IDisposable
         progress.Reports[0].Should().Be((0, 0));
         progress.Reports[1].Should().Be((0, 0));
     }
+
+    [Fact]
+    public async Task Execute_NexusAuthFailure_ThrowsHelpfulMessage()
+    {
+        var content = FakeArchiveDownloader.MakeBytes("x");
+        var hash = FakeArchiveDownloader.HashOf(content);
+
+        var archive = new ArchiveEntry
+        {
+            Id = "nexus_skyrimspecialedition_1_1",
+            Name = "N.7z",
+            Size = content.Length,
+            Hash = hash,
+            Sources = new ArchiveSourceRef[]
+            {
+                new NexusSourceRef
+                {
+                    Game = "skyrimspecialedition",
+                    ModId = 1,
+                    FileId = 1,
+                },
+            },
+        };
+
+        var nexusDownloader = new FakeArchiveDownloader("nexus")
+        {
+            AlwaysThrow = new Modsync.Platform.Nexus.NexusAuthenticationException(
+                "Nexus API key is not set. Authenticate with Nexus to continue."),
+            PermanentType = typeof(Modsync.Platform.Nexus.NexusAuthenticationException),
+        };
+
+        var step = MakeStep(nexusDownloader);
+
+        var act = async () => await step.ExecuteAsync(
+            MakeInput(MakeManifest(archive), _downloadsPath),
+            CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Settings → Nexus*")
+            .WithMessage("*API key*");
+    }
 }

@@ -28,9 +28,22 @@ public interface IArchiveDownloader
     /// <summary>
     /// Скачать содержимое архива по источнику.
     ///
-    /// Бросает исключение при неудаче. Retry — на стороне SyncArchivesStep.
+    /// Бросает исключение при неудаче. Retry — на стороне
+    /// ArchiveDownloadHelper. Если исключение — «постоянная»
+    /// ошибка (см. IsPermanentFailure), retry пропускается.
     /// </summary>
     Task<Stream> DownloadAsync(
         ArchiveSourceRef source,
         CancellationToken ct);
+
+    /// <summary>
+    /// Является ли исключение «постоянной» ошибкой, на которую
+    /// бессмысленно повторять попытку.
+    ///
+    /// Пример: NexusAuthenticationException — ключ не появится от
+    /// повторной попытки. Retry только тратит время.
+    ///
+    /// Default: false (все ошибки retry-абельны).
+    /// </summary>
+    bool IsPermanentFailure(Exception ex) => false;
 }

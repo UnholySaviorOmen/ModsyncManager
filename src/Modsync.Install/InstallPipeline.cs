@@ -15,6 +15,7 @@ namespace Modsync.Install;
 ///
 /// Порядок:
 ///   ReadManifestStep        → manifest, manifestPath
+///   PreflightNexusAuthStep  → проверка наличия API-ключа (если нужен)
 ///   ResolveTargetStep       → instancePath, manifestPathInInstance
 ///   ValidateTargetStep      → (проверка)
 ///   BootstrapInstanceStep   → все пути инстанса
@@ -30,6 +31,7 @@ namespace Modsync.Install;
 public sealed class InstallPipeline
 {
     private readonly ReadManifestStep _readManifest;
+    private readonly PreflightNexusAuthStep _preflightNexusAuth;
     private readonly ResolveTargetStep _resolveTarget;
     private readonly ValidateTargetStep _validateTarget;
     private readonly BootstrapInstanceStep _bootstrapInstance;
@@ -50,6 +52,7 @@ public sealed class InstallPipeline
     private static readonly string[] StepNames =
     {
         "ReadManifest",
+        "PreflightNexusAuth",
         "ResolveTarget",
         "ValidateTarget",
         "BootstrapInstance",
@@ -65,6 +68,7 @@ public sealed class InstallPipeline
 
     public InstallPipeline(
         ReadManifestStep readManifest,
+        PreflightNexusAuthStep preflightNexusAuth,
         ResolveTargetStep resolveTarget,
         ValidateTargetStep validateTarget,
         BootstrapInstanceStep bootstrapInstance,
@@ -79,6 +83,7 @@ public sealed class InstallPipeline
         ILogger<InstallPipeline> logger)
     {
         _readManifest = readManifest;
+        _preflightNexusAuth = preflightNexusAuth;
         _resolveTarget = resolveTarget;
         _validateTarget = validateTarget;
         _bootstrapInstance = bootstrapInstance;
@@ -121,8 +126,18 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 2. ResolveTargetStep ---
+        // --- 2. PreflightNexusAuthStep ---
         progress?.Report(new StepProgress(2, totalSteps, StepNames[1]));
+        await _preflightNexusAuth.ExecuteAsync(
+            new PreflightNexusAuthStep.Input
+            {
+                Manifest = manifest,
+            }, ct);
+
+        ct.ThrowIfCancellationRequested();
+
+        // --- 3. ResolveTargetStep ---
+        progress?.Report(new StepProgress(3, totalSteps, StepNames[2]));
         var resolveTargetOutput = await _resolveTarget.ExecuteAsync(
             new ResolveTargetStep.Input
             {
@@ -136,8 +151,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 3. ValidateTargetStep ---
-        progress?.Report(new StepProgress(3, totalSteps, StepNames[2]));
+        // --- 4. ValidateTargetStep ---
+        progress?.Report(new StepProgress(4, totalSteps, StepNames[3]));
         var validateTargetOutput = await _validateTarget.ExecuteAsync(
             new ValidateTargetStep.Input
             {
@@ -147,8 +162,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 4. BootstrapInstanceStep ---
-        progress?.Report(new StepProgress(4, totalSteps, StepNames[3]));
+        // --- 5. BootstrapInstanceStep ---
+        progress?.Report(new StepProgress(5, totalSteps, StepNames[4]));
         var bootstrapInstanceOutput = await _bootstrapInstance.ExecuteAsync(
             new BootstrapInstanceStep.Input
             {
@@ -157,8 +172,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 5. BootstrapMo2Step ---
-        progress?.Report(new StepProgress(5, totalSteps, StepNames[4]));
+        // --- 6. BootstrapMo2Step ---
+        progress?.Report(new StepProgress(6, totalSteps, StepNames[5]));
         await _bootstrapMo2.ExecuteAsync(
             new BootstrapMo2Step.Input
             {
@@ -168,17 +183,17 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 6. SyncArchivesStep ---
+        // --- 7. SyncArchivesStep ---
         // Адаптер: SyncArchivesStep репортит (Completed, Total),
         // мы превращаем это в StepProgress.Detail для UI.
         var syncArchivesDetail = progress is null
             ? null
             : new Progress<(int Completed, int Total)>(p =>
                 progress.Report(new StepProgress(
-                    6, totalSteps, StepNames[5],
+                    7, totalSteps, StepNames[6],
                     $"Downloading: {p.Completed} / {p.Total}")));
 
-        progress?.Report(new StepProgress(6, totalSteps, StepNames[5]));
+        progress?.Report(new StepProgress(7, totalSteps, StepNames[6]));
         var syncArchivesOutput = await _syncArchives.ExecuteAsync(
             new SyncArchivesStep.Input
             {
@@ -190,11 +205,11 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 6a. Архивы по id (включая MO2-архив) ---
+        // --- 7a. Архивы по id (включая MO2-архив) ---
         var archivesById = BuildArchivesById(manifest);
 
-        // --- 7. GenerateArchiveMetaStep ---
-        progress?.Report(new StepProgress(7, totalSteps, StepNames[6]));
+        // --- 8. GenerateArchiveMetaStep ---
+        progress?.Report(new StepProgress(8, totalSteps, StepNames[7]));
         var generateArchiveMetaOutput = await _generateArchiveMeta.ExecuteAsync(
             new GenerateArchiveMetaStep.Input
             {
@@ -204,8 +219,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 8. ExecuteExtensionsStep ---
-        progress?.Report(new StepProgress(8, totalSteps, StepNames[7]));
+        // --- 9. ExecuteExtensionsStep ---
+        progress?.Report(new StepProgress(9, totalSteps, StepNames[8]));
         var executeExtensionsOutput = await _executeExtensions.ExecuteAsync(
             new ExecuteExtensionsStep.Input
             {
@@ -217,8 +232,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 9. ExecuteExtrasStep ---
-        progress?.Report(new StepProgress(9, totalSteps, StepNames[8]));
+        // --- 10. ExecuteExtrasStep ---
+        progress?.Report(new StepProgress(10, totalSteps, StepNames[9]));
         var executeExtrasOutput = await _executeExtras.ExecuteAsync(
             new ExecuteExtrasStep.Input
             {
@@ -230,16 +245,16 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 10. SyncModsStep ---
+        // --- 11. SyncModsStep ---
         // Адаптер: SyncModsStep репортит (Completed, Total) для Pass 1.
         var syncModsDetail = progress is null
             ? null
             : new Progress<(int Completed, int Total)>(p =>
                 progress.Report(new StepProgress(
-                    10, totalSteps, StepNames[9],
+                    11, totalSteps, StepNames[10],
                     $"Syncing: {p.Completed} / {p.Total} mods")));
 
-        progress?.Report(new StepProgress(10, totalSteps, StepNames[9]));
+        progress?.Report(new StepProgress(11, totalSteps, StepNames[10]));
         var syncModsOutput = await _syncMods.ExecuteAsync(
             new SyncModsStep.Input
             {
@@ -253,8 +268,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 11. GenerateMetaIniStep ---
-        progress?.Report(new StepProgress(11, totalSteps, StepNames[10]));
+        // --- 12. GenerateMetaIniStep ---
+        progress?.Report(new StepProgress(12, totalSteps, StepNames[11]));
         var generateMetaIniOutput = await _generateMetaIni.ExecuteAsync(
             new GenerateMetaIniStep.Input
             {
@@ -264,8 +279,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 12. RegenerateProfileStep ---
-        progress?.Report(new StepProgress(12, totalSteps, StepNames[11]));
+        // --- 13. RegenerateProfileStep ---
+        progress?.Report(new StepProgress(13, totalSteps, StepNames[12]));
         var regenerateProfileOutput = await _regenerateProfile.ExecuteAsync(
             new RegenerateProfileStep.Input
             {

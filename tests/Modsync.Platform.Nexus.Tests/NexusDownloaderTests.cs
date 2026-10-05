@@ -455,4 +455,38 @@ public class NexusDownloaderTests
         await act.Should().ThrowAsync<ArgumentException>()
             .WithMessage("*NexusSourceRef*");
     }
+
+    // ------------------------------------------------------------------
+    //  IsPermanentFailure
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void IsPermanentFailure_NexusAuthException_ReturnsTrue()
+    {
+        var (downloader, _, _) = MakeDownloader();
+
+        downloader.IsPermanentFailure(
+            new NexusAuthenticationException("no key"))
+            .Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsPermanentFailure_HttpRequestException_ReturnsFalse()
+    {
+        var (downloader, _, _) = MakeDownloader();
+
+        downloader.IsPermanentFailure(
+            new HttpRequestException("network"))
+            .Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsPermanentFailure_GenericException_ReturnsFalse()
+    {
+        var (downloader, _, _) = MakeDownloader();
+
+        downloader.IsPermanentFailure(
+            new InvalidOperationException("boom"))
+            .Should().BeFalse();
+    }
 }
