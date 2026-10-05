@@ -1310,4 +1310,54 @@ public class VerifyPipelineTests : IDisposable
             Plugins = source.Plugins,
             Loadorder = source.Loadorder,
         };
+
+    [Fact]
+    public void ArchiveMeta_Expected_FileUnparseable_Fails()
+    {
+        var inst = BuildValidInstance();
+
+        var expectedMeta = new ModMeta
+        {
+            ModId = 1,
+            FileId = 1,
+        };
+
+        var manifestWithMeta = CloneManifestWithArchives(inst.Manifest,
+            new[]
+            {
+                new ArchiveEntry
+                {
+                    Id = "nexus_skyrimspecialedition_1_1",
+                    Name = ModArchiveName,
+                    Size = inst.Manifest.Archives[0].Size,
+                    Hash = inst.Manifest.Archives[0].Hash,
+                    Sources = inst.Manifest.Archives[0].Sources,
+                    Meta = expectedMeta,
+                },
+            });
+
+        ManifestJson.Save(
+            Path.Combine(_targetDir, "modlist.json"),
+            manifestWithMeta);
+
+        // Пишем .meta, который не парсится как INI.
+        // Наш MetaIniReader терпимый: он не падает, но игнорирует
+        // невалидные строки. Чтобы гарантированно получить fail,
+        // запишем .meta с корректным INI, но без нужных полей —
+        // тогда CompareArchiveMeta обнаружит расхождение.
+        //
+        // Тест на malformed-INI, который бросает — используем
+        // более простой сценарий: файл-«мусор» без секции [General].
+        File.WriteAllText(
+            Path.Combine(inst.DownloadsPath, ModArchiveName + ".meta"),
+            "this is not an INI file at all\r\njust garbage\r\n");
+
+        var report = Run();
+
+        report.IsOk.Should().BeFalse();
+        var failure = report.Failures
+            .FirstOrDefault(f => f.Name.Contains($"{ModArchiveName} / meta"));
+        failure.Should().NotBeNull();
+        failure!.Message.Should().Contain("modID");
+    }
 }

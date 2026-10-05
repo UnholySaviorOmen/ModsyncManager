@@ -133,7 +133,8 @@
                     BorderThickness="1"
                     CornerRadius="10"
                     Padding="16">
-                <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+                <Grid ColumnDefinitions="Auto,*"
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Name"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="0" Grid.Column="1"
@@ -172,9 +173,15 @@
                     </TextBlock>
 
                     <TextBlock Grid.Row="5" Grid.Column="0" Text="meta.ini"
-                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,0" />
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="5" Grid.Column="1"
-                               Text="{Binding Summary.MetaIniWritten}" />
+                               Text="{Binding Summary.MetaIniWritten}"
+                               Margin="0,0,0,4" />
+
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Archive .meta"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,0" />
+                    <TextBlock Grid.Row="6" Grid.Column="1"
+                               Text="{Binding Summary.ArchiveMetaWritten}" />
                 </Grid>
             </Border>
 

@@ -156,7 +156,8 @@ public sealed class PackPipeline
             }, ct);
         ct.ThrowIfCancellationRequested();
 
-        var archiveIndexWithMo2 = AddMo2ArchiveToResolved(config, archiveIndex);
+        var archiveIndexWithMo2 = AddMo2ArchiveToResolved(
+            config, archiveIndex, snapshot.DownloadsPath);
 
         var matcher = new ArchiveMatcher(
             archiveIndexWithMo2,
@@ -269,10 +270,11 @@ public sealed class PackPipeline
 
     private ArchiveIndex AddMo2ArchiveToResolved(
         PackConfig config,
-        ArchiveIndex archiveIndex)
+        ArchiveIndex archiveIndex,
+        string downloadsPath)
     {
         var mo2Archive = Mo2ArchiveBuilder.Build(
-            config, archiveIndex, _logger);
+            config, archiveIndex, downloadsPath, _logger);
 
         var resolved = archiveIndex.Resolved
             .Where(a => !string.Equals(

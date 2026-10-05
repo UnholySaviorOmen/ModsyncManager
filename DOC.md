@@ -252,7 +252,8 @@ Slug, ArchiveId, абстракции, `SevenZipExtractor`, `TempWorkspace`,
 **Modsync.Pack:** `PackPipeline` + 13 шагов;
 `Modsync.Pack.Matching` (`ArchiveMatcher`, `ArchiveIndexes`,
 `Mo2ArchiveBuilder`) — построение индексов архивов и матчинг файлов
-по хешу. Один экземпляр `ArchiveMatcher` на весь pipeline.
+по хешу. `Mo2ArchiveBuilder` читает `.meta` для MO2-архива
+(если есть) и заполняет `ArchiveEntry.Meta`. Один экземпляр `ArchiveMatcher` на весь pipeline.
 `PackInputFactory`, `PackSummary` + `PackSummaryBuilder`.
 **`PackConfigBuilder`** — сервис для GUI-формы «Pack Config»:
 сканирует `MO2/downloads/` на non-nexus архивы, читает профили,
@@ -606,6 +607,9 @@ ignored)»).
 ### Формат meta.ini мода
 
 Файл `mods/<Name>/meta.ini`. Создаётся MO2.
+
+**Тот же формат INI используется для `.meta` архивов** в
+`downloads/` (см. §6.5). Единый парсер — `MetaIniReader`.
 
 ```
 [General]

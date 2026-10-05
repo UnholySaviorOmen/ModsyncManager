@@ -1,7 +1,7 @@
 # ModsyncManager — состояние проекта и план работ
 
 **Обновлено:** 2026-10-05
-**Всего тестов:** 1256, 0 failed
+**Всего тестов:** 1259, 0 failed
 **Текущий блок:** все запланированные блоки закрыты
 **Следующий блок:** (не определён)
 
@@ -178,6 +178,20 @@ DEEPSEEK.md — только по запросу.
   проверяет `.meta` для архивов и MO2-архива. Если
   `Meta != null` — файл должен быть и совпадать; если
   `Meta == null` — не ошибка (даже если файл есть).
+- ✅ **Блок 39.1** — `DOC.md` §6.6: обратная ссылка на §6.5
+  (единый INI-формат `.meta` и `meta.ini`).
+- ✅ **Блок 39.2** — интеграционный тест
+  `PackInstallArchiveMetaTests`: pack → manifest.Meta →
+  install → `.meta` восстановлен → verify.
+- ✅ **Блок 39.3** — `VerifyPipeline` тест на битый `.meta`
+  (файл есть, содержимое не парсится корректно).
+- ✅ **Блок 39.4** — caption-подписи под кнопками формы
+  `PackConfigView` (`Load config…`, `Save as…`, `Pack`).
+- ✅ **Блок 39.5** — `.meta` для MO2-архива в packer-е:
+  `Mo2ArchiveBuilder.Build` читает `downloads/<mo2>.meta`
+  и заполняет `ArchiveEntry.Meta`.
+- ✅ **Блок 39.6** — `ArchiveMetaWritten` в Success-панели
+  `InstallView.axaml`.
 
 ### В работе
 
@@ -909,6 +923,37 @@ Owner-тип не может быть static-классом (CS0718).
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
+- **2026-10-05** — Полировка после блока 38 (блок 39).
+  - **39.1** — `DOC.md` §6.6: обратная ссылка на §6.5.
+    Единый INI-парсер `MetaIniReader` для `.meta` архивов
+    и `meta.ini` модов.
+  - **39.2** — интеграционный тест
+    `PackInstallArchiveMetaTests`. Ключевой сценарий:
+    у автора `.meta` есть → pack → манифест содержит
+    `ArchiveEntry.Meta` → preload, `.meta` удалён из target →
+    install восстанавливает `.meta` через
+    `GenerateArchiveMetaStep` → verify проходит.
+    Второй тест: `.meta` повреждён в target → verify fail.
+  - **39.3** — `VerifyPipelineTests`: `.meta` не парсится
+    (мусор вместо INI) → `CompareArchiveMeta` даёт fail
+    `modID: expected 1, got null`.
+  - **39.4** — caption-подписи под кнопками формы Pack Config:
+    `Load config…` («Load existing config from disk.»),
+    `Save as…` («Save config without running pack.»),
+    `Pack` («Save config and run packer.»). Симметрично
+    caption-подписям на главном экране Pack.
+  - **39.5** — packer читает `.meta` для MO2-архива.
+    `Mo2ArchiveBuilder.Build` получил новый параметр
+    `downloadsPath`, читает `downloads/<mo2>.meta` через
+    `MetaIniReader.TryRead`, заполняет `ArchiveEntry.Meta`
+    во всех трёх ветвях (Resolved/Unresolved/Missing).
+    Симметрично тому, что делает `IndexArchivesStep` для
+    обычных архивов.
+  - **39.6** — `InstallView.axaml`: Success-панель показывает
+    `Archive .meta` (число записанных `.meta`).
+    Поле `InstallSummary.ArchiveMetaWritten` уже было
+    добавлено в блоке 38.4, но не отображалось.
+  - **Итог:** `dotnet test` — 1259 тестов, 0 failed.
 - **2026-10-05** — Восстановление `.meta` для архивов (блок 38).
   - **Проблема:** при install в `downloads/` не восстанавливались
     `.meta`-файлы MO2. При повторном pack (например, для обновления

@@ -61,7 +61,8 @@ public sealed class BuildManifestStep : IStep<BuildManifestStep.Input, ModlistMa
         var loadorder = input.Snapshot.Loadorder.Plugins.ToList();
 
         var mo2Archive = Mo2ArchiveBuilder.Build(
-            input.Config, input.ArchiveIndex, _logger);
+            input.Config, input.ArchiveIndex,
+            input.Snapshot.DownloadsPath, _logger);
 
         var extensions = BuildExtensions(input);
         var extras = BuildExtras(input);

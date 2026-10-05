@@ -6,6 +6,7 @@ using Modsync.Core.Models.Hashing;
 using Modsync.Core.Models.Manifest;
 using Modsync.Core.Models.Manifest.Sources;
 using Modsync.Core.Models.Pack;
+using Modsync.Platform.MO2.Readers;
 using Microsoft.Extensions.Logging;
 
 namespace Modsync.Pack.Matching;
@@ -22,6 +23,12 @@ namespace Modsync.Pack.Matching;
 ///     (пользователь опечатался в конфиге или файл не тот).
 ///   - Если архива нет — size = 0, hash берётся из source.
 ///
+/// Meta:
+///   - Если рядом с MO2-архивом в downloads/ есть валидный .meta
+///     (modID + fileID), заполняем ArchiveEntry.Meta.
+///   - Иначе Meta = null.
+///   - downloadsPath нужен для чтения .meta. Передаётся в Build.
+///
 /// Используется:
 ///   - BuildManifestStep — для manifest.Mo2.Archive.
 ///   - PackPipeline — для передачи MO2-архива в ArchiveMatcher, чтобы
@@ -32,6 +39,7 @@ internal static class Mo2ArchiveBuilder
     public static ArchiveEntry Build(
         PackConfig config,
         ArchiveIndex archiveIndex,
+        string downloadsPath,
         ILogger logger)
     {
         if (config.Mo2.Source is not MirrorSourceRef mirror)
@@ -43,6 +51,7 @@ internal static class Mo2ArchiveBuilder
         }
 
         var expectedHash = mirror.Hash;
+        var meta = TryReadMeta(config.Mo2.Archive, downloadsPath, logger);
 
         // 1. Resolved
         var resolved = archiveIndex.Resolved
@@ -65,6 +74,7 @@ internal static class Mo2ArchiveBuilder
                 Size = resolved.Size,
                 Hash = expectedHash,
                 Sources = new ArchiveSourceRef[] { config.Mo2.Source },
+                Meta = meta,
             };
         }
 
@@ -89,6 +99,7 @@ internal static class Mo2ArchiveBuilder
                 Size = unresolved.Size,
                 Hash = expectedHash,
                 Sources = new ArchiveSourceRef[] { config.Mo2.Source },
+                Meta = meta,
             };
         }
 
@@ -105,7 +116,57 @@ internal static class Mo2ArchiveBuilder
             Size = 0,
             Hash = expectedHash,
             Sources = new ArchiveSourceRef[] { config.Mo2.Source },
+            Meta = meta,
         };
+    }
+
+    // ------------------------------------------------------------------
+    //  .meta
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Читает .meta для MO2-архива, если он есть и валиден.
+    /// Возвращает null, если файла нет, или он не парсится, или
+    /// в нём нет modID/fileID.
+    /// </summary>
+    private static ModMeta? TryReadMeta(
+        string archiveName,
+        string downloadsPath,
+        ILogger logger)
+    {
+        if (string.IsNullOrWhiteSpace(downloadsPath))
+            return null;
+
+        var metaPath = Path.Combine(downloadsPath, archiveName + ".meta");
+        if (!File.Exists(metaPath))
+            return null;
+
+        ModMeta? meta;
+        try
+        {
+            meta = MetaIniReader.TryRead(metaPath);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to parse .meta for MO2 archive '{Name}'",
+                archiveName);
+            return null;
+        }
+
+        if (meta is null)
+            return null;
+
+        if (!meta.ModId.HasValue || !meta.FileId.HasValue)
+        {
+            logger.LogDebug(
+                "MO2 archive '{Name}': .meta present but no modID/fileID — " +
+                "ignoring for Meta",
+                archiveName);
+            return null;
+        }
+
+        return meta;
     }
 
     private static void ThrowIfHashMismatch(
