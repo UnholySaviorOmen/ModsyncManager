@@ -20,6 +20,7 @@ namespace Modsync.Install;
 ///   BootstrapInstanceStep   → все пути инстанса
 ///   BootstrapMo2Step        → распакованный MO2/
 ///   SyncArchivesStep        → все архивы в downloads/
+///   GenerateArchiveMetaStep → .meta для архивов в downloads/
 ///   ExecuteExtensionsStep   → extensions в MO2/  (12.9)
 ///   ExecuteExtrasStep       → extras в Stock Game/  (12.9)
 ///   SyncModsStep            → mods/ под манифест
@@ -34,6 +35,7 @@ public sealed class InstallPipeline
     private readonly BootstrapInstanceStep _bootstrapInstance;
     private readonly BootstrapMo2Step _bootstrapMo2;
     private readonly SyncArchivesStep _syncArchives;
+    private readonly GenerateArchiveMetaStep _generateArchiveMeta;
     private readonly ExecuteExtensionsStep _executeExtensions;
     private readonly ExecuteExtrasStep _executeExtras;
     private readonly SyncModsStep _syncMods;
@@ -53,6 +55,7 @@ public sealed class InstallPipeline
         "BootstrapInstance",
         "BootstrapMo2",
         "SyncArchives",
+        "GenerateArchiveMeta",
         "ExecuteExtensions",
         "ExecuteExtras",
         "SyncMods",
@@ -67,6 +70,7 @@ public sealed class InstallPipeline
         BootstrapInstanceStep bootstrapInstance,
         BootstrapMo2Step bootstrapMo2,
         SyncArchivesStep syncArchives,
+        GenerateArchiveMetaStep generateArchiveMeta,
         ExecuteExtensionsStep executeExtensions,
         ExecuteExtrasStep executeExtras,
         SyncModsStep syncMods,
@@ -80,6 +84,7 @@ public sealed class InstallPipeline
         _bootstrapInstance = bootstrapInstance;
         _bootstrapMo2 = bootstrapMo2;
         _syncArchives = syncArchives;
+        _generateArchiveMeta = generateArchiveMeta;
         _executeExtensions = executeExtensions;
         _executeExtras = executeExtras;
         _syncMods = syncMods;
@@ -188,8 +193,19 @@ public sealed class InstallPipeline
         // --- 6a. Архивы по id (включая MO2-архив) ---
         var archivesById = BuildArchivesById(manifest);
 
-        // --- 7. ExecuteExtensionsStep ---
+        // --- 7. GenerateArchiveMetaStep ---
         progress?.Report(new StepProgress(7, totalSteps, StepNames[6]));
+        var generateArchiveMetaOutput = await _generateArchiveMeta.ExecuteAsync(
+            new GenerateArchiveMetaStep.Input
+            {
+                Manifest = manifest,
+                DownloadsPath = bootstrapInstanceOutput.DownloadsPath,
+            }, ct);
+
+        ct.ThrowIfCancellationRequested();
+
+        // --- 8. ExecuteExtensionsStep ---
+        progress?.Report(new StepProgress(8, totalSteps, StepNames[7]));
         var executeExtensionsOutput = await _executeExtensions.ExecuteAsync(
             new ExecuteExtensionsStep.Input
             {
@@ -201,8 +217,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 8. ExecuteExtrasStep ---
-        progress?.Report(new StepProgress(8, totalSteps, StepNames[7]));
+        // --- 9. ExecuteExtrasStep ---
+        progress?.Report(new StepProgress(9, totalSteps, StepNames[8]));
         var executeExtrasOutput = await _executeExtras.ExecuteAsync(
             new ExecuteExtrasStep.Input
             {
@@ -214,16 +230,16 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 9. SyncModsStep ---
+        // --- 10. SyncModsStep ---
         // Адаптер: SyncModsStep репортит (Completed, Total) для Pass 1.
         var syncModsDetail = progress is null
             ? null
             : new Progress<(int Completed, int Total)>(p =>
                 progress.Report(new StepProgress(
-                    9, totalSteps, StepNames[8],
+                    10, totalSteps, StepNames[9],
                     $"Syncing: {p.Completed} / {p.Total} mods")));
 
-        progress?.Report(new StepProgress(9, totalSteps, StepNames[8]));
+        progress?.Report(new StepProgress(10, totalSteps, StepNames[9]));
         var syncModsOutput = await _syncMods.ExecuteAsync(
             new SyncModsStep.Input
             {
@@ -237,8 +253,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 10. GenerateMetaIniStep ---
-        progress?.Report(new StepProgress(10, totalSteps, StepNames[9]));
+        // --- 11. GenerateMetaIniStep ---
+        progress?.Report(new StepProgress(11, totalSteps, StepNames[10]));
         var generateMetaIniOutput = await _generateMetaIni.ExecuteAsync(
             new GenerateMetaIniStep.Input
             {
@@ -248,8 +264,8 @@ public sealed class InstallPipeline
 
         ct.ThrowIfCancellationRequested();
 
-        // --- 11. RegenerateProfileStep ---
-        progress?.Report(new StepProgress(11, totalSteps, StepNames[10]));
+        // --- 12. RegenerateProfileStep ---
+        progress?.Report(new StepProgress(12, totalSteps, StepNames[11]));
         var regenerateProfileOutput = await _regenerateProfile.ExecuteAsync(
             new RegenerateProfileStep.Input
             {
@@ -266,6 +282,7 @@ public sealed class InstallPipeline
             Manifest = manifest,
             BootstrapInstance = bootstrapInstanceOutput,
             SyncArchives = syncArchivesOutput,
+            GenerateArchiveMeta = generateArchiveMetaOutput,
             ExecuteExtensions = executeExtensionsOutput,
             ExecuteExtras = executeExtrasOutput,
             SyncMods = syncModsOutput,
@@ -319,6 +336,7 @@ public sealed class InstallPipeline
 
         public required BootstrapInstanceStep.Output BootstrapInstance { get; init; }
         public required SyncArchivesStep.Output SyncArchives { get; init; }
+        public required GenerateArchiveMetaStep.Output GenerateArchiveMeta { get; init; }
         public required ExecuteExtensionsStep.Output ExecuteExtensions { get; init; }
         public required ExecuteExtrasStep.Output ExecuteExtras { get; init; }
         public required SyncModsStep.Output SyncMods { get; init; }

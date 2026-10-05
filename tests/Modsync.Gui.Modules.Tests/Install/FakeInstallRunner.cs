@@ -51,7 +51,9 @@ public sealed class FakeInstallRunner : IInstallRunner
         int modsSkipped = 0,
         int archivesDownloaded = 0,
         int archivesPresent = 0,
-        int metaIniWritten = 0)
+        int metaIniWritten = 0,
+        int archiveMetaWritten = 0,
+        int archiveMetaSkipped = 0)
     {
         return new InstallSummary
         {
@@ -69,6 +71,8 @@ public sealed class FakeInstallRunner : IInstallRunner
             ModsDeleted = 0,
             MetaIniWritten = metaIniWritten,
             MetaIniDeleted = 0,
+            ArchiveMetaWritten = archiveMetaWritten,
+            ArchiveMetaSkipped = archiveMetaSkipped,
             ExtensionsWritten = 0,
             ExtensionsSkipped = 0,
             ExtrasWritten = 0,

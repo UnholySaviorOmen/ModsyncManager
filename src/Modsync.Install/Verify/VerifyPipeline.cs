@@ -160,9 +160,14 @@ public sealed class VerifyPipeline
 
         checks.AddRange(CheckArchive(
             "MO2 archive", manifest.Mo2.Archive, ctx));
+        checks.Add(CheckArchiveMeta(
+            "MO2 archive", manifest.Mo2.Archive, ctx));
 
         foreach (var archive in manifest.Archives)
+        {
             checks.AddRange(CheckArchive($"Archive: {archive.Name}", archive, ctx));
+            checks.Add(CheckArchiveMeta($"Archive: {archive.Name}", archive, ctx));
+        }
 
         foreach (var mod in manifest.Mods)
             checks.AddRange(CheckMod(mod, ctx));
@@ -243,6 +248,89 @@ public sealed class VerifyPipeline
                 name,
                 $"Missing in downloads/: {archive.Name} ({archive.Hash})");
         }
+    }
+
+    /// <summary>
+    /// Проверяет .meta-файл для архива.
+    ///
+    /// Логика:
+    ///   - archive.Meta == null → проверка «meta not expected»: файл
+    ///     не должен существовать (или, если существует — это не ошибка,
+    ///     пользователь мог положить вручную).
+    ///   - archive.Meta != null → файл downloads/&lt;name&gt;.meta должен
+    ///     существовать и его содержимое должно совпадать с archive.Meta
+    ///     (семантическое сравнение полей, как для mods/&lt;Name&gt;/meta.ini).
+    /// </summary>
+    private static VerifyCheckResult CheckArchiveMeta(
+        string displayPrefix,
+        ArchiveEntry archive,
+        VerifyContext ctx)
+    {
+        var metaPath = Path.Combine(
+            ctx.DownloadsPath, archive.Name + ".meta");
+
+        if (archive.Meta is null)
+        {
+            // .meta не ожидается. Если есть — не ошибка (пользователь мог
+            // положить вручную или это остаток от старой версии). Просто
+            // отмечаем факт.
+            return VerifyCheckResult.Ok(
+                $"{displayPrefix} / meta",
+                File.Exists(metaPath)
+                    ? "not expected (file present, ignored)"
+                    : "not expected");
+        }
+
+        if (!File.Exists(metaPath))
+        {
+            return VerifyCheckResult.Fail(
+                $"{displayPrefix} / meta",
+                $"File missing: {metaPath}");
+        }
+
+        ModMeta actual;
+        try
+        {
+            actual = MetaIniReader.Parse(File.ReadAllLines(metaPath));
+        }
+        catch (Exception ex)
+        {
+            return VerifyCheckResult.Fail(
+                $"{displayPrefix} / meta",
+                $"Failed to parse: {ex.Message}");
+        }
+
+        return CompareArchiveMeta(displayPrefix, archive.Meta, actual);
+    }
+
+    /// <summary>
+    /// Сравнивает ожидаемый ModMeta (из манифеста) с фактическим
+    /// (прочитанным из .meta-файла). Возвращает Ok или Fail со списком
+    /// различий. Логика — та же, что в CompareModMeta.
+    /// </summary>
+    private static VerifyCheckResult CompareArchiveMeta(
+        string displayPrefix,
+        ModMeta expected,
+        ModMeta actual)
+    {
+        var diffs = new List<string>();
+
+        CompareString("gameName", expected.GameName, actual.GameName, diffs);
+        CompareString("gameID", expected.GameId, actual.GameId, diffs);
+        CompareInt("modID", expected.ModId, actual.ModId, diffs);
+        CompareInt("fileID", expected.FileId, actual.FileId, diffs);
+        CompareString("version", expected.Version, actual.Version, diffs);
+        CompareString("repository", expected.Repository, actual.Repository, diffs);
+        CompareString("url", expected.Url, actual.Url, diffs);
+        CompareString("comments", expected.Comments, actual.Comments, diffs);
+        CompareString("notes", expected.Notes, actual.Notes, diffs);
+
+        if (diffs.Count == 0)
+            return VerifyCheckResult.Ok($"{displayPrefix} / meta", null);
+
+        return VerifyCheckResult.Fail(
+            $"{displayPrefix} / meta",
+            $"Content differs: {string.Join("; ", diffs)}");
     }
 
     private VerifyCheckResult CheckDirectiveFile(

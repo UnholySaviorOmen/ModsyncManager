@@ -366,4 +366,110 @@ public class MetaIniReaderTests
         var m = new ModMeta { GameName = "Skyrim" };
         m.IsEmpty.Should().BeFalse();
     }
+
+    // ------------------------------------------------------------------
+    //  .meta-специфичные тесты (перенесены из MetaReaderTests)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Parse_DirectUrlMeta_NoModIdFileId_ReturnsEmptyFields()
+    {
+        // Некоторые .meta не от Nexus: directURL, manualURL, IPS4.
+        // У них нет modID/fileID. MetaIniReader не возвращает null,
+        // а возвращает ModMeta с ModId=null, FileId=null.
+        var lines = new[]
+        {
+            "[General]",
+            "gameName=Skyrim",
+            "directURL=https://example.com/mod.7z",
+        };
+
+        var meta = MetaIniReader.Parse(lines);
+
+        meta.ModId.Should().BeNull();
+        meta.FileId.Should().BeNull();
+        meta.GameName.Should().Be("Skyrim");
+    }
+
+    [Fact]
+    public void Parse_MissingFileId_FileIdIsNull()
+    {
+        var lines = new[]
+        {
+            "[General]",
+            "gameName=Skyrim",
+            "modID=3863",
+        };
+
+        var meta = MetaIniReader.Parse(lines);
+
+        meta.ModId.Should().Be(3863);
+        meta.FileId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Parse_NonIntegerModId_ModIdIsNull()
+    {
+        var lines = new[]
+        {
+            "[General]",
+            "gameName=Skyrim",
+            "modID=not-a-number",
+            "fileID=1000172397",
+        };
+
+        var meta = MetaIniReader.Parse(lines);
+
+        meta.ModId.Should().BeNull();
+        meta.FileId.Should().Be(1000172397);
+    }
+
+    [Fact]
+    public void Parse_LowercaseKeys_ReturnsNullForModIdFileId()
+    {
+        // MetaIniReader читает ключи case-insensitive,
+        // поэтому modid и fileid — валидные ключи.
+        // Это отличается от старого MetaReader, который был
+        // case-sensitive.
+        var lines = new[]
+        {
+            "[General]",
+            "gameName=Skyrim",
+            "modid=3863",
+            "fileid=1000172397",
+        };
+
+        var meta = MetaIniReader.Parse(lines);
+
+        meta.ModId.Should().Be(3863);
+        meta.FileId.Should().Be(1000172397);
+    }
+
+    [Fact]
+    public void TryRead_RealMetaFileWithInstalledFiles_ParsesGeneralOnly()
+    {
+        var content = "\uFEFF[General]\r\n" +
+                      "gameName=Skyrim\r\n" +
+                      "modID=12604\r\n" +
+                      "fileID=1234567890\r\n" +
+                      "\r\n" +
+                      "[installedFiles]\r\n" +
+                      "1\\interface\\iconmenu.swf=DEADBEEF\r\n";
+
+        var tmp = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(tmp, content);
+
+            var meta = MetaIniReader.TryRead(tmp);
+
+            meta.Should().NotBeNull();
+            meta!.ModId.Should().Be(12604);
+            meta.FileId.Should().Be(1234567890);
+        }
+        finally
+        {
+            File.Delete(tmp);
+        }
+    }
 }

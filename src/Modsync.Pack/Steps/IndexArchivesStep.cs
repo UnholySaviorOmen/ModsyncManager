@@ -122,11 +122,26 @@ public sealed class IndexArchivesStep
         // 1. Пробуем .meta
         if (File.Exists(metaPath))
         {
-            var meta = MetaReader.TryRead(metaPath);
-
-            if (meta is not null)
+            ModMeta? meta;
+            try
             {
-                var id = ArchiveId.FromNexus(input.GameDomain, meta.ModId, meta.FileId);
+                meta = MetaIniReader.TryRead(metaPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex,
+                    "Failed to parse .meta for '{File}'. " +
+                    "Falling back to archiveSources.",
+                    fileName);
+                meta = null;
+            }
+
+            if (meta is not null
+                && meta.ModId.HasValue
+                && meta.FileId.HasValue)
+            {
+                var id = ArchiveId.FromNexus(
+                    input.GameDomain, meta.ModId.Value, meta.FileId.Value);
 
                 return PerFileResult.AsResolved(new ArchiveEntry
                 {
@@ -138,11 +153,12 @@ public sealed class IndexArchivesStep
                     {
                         new NexusSourceRef
                         {
-                            ModId  = meta.ModId,
-                            FileId = meta.FileId,
+                            ModId  = meta.ModId.Value,
+                            FileId = meta.FileId.Value,
                             Game   = input.GameDomain,
                         },
                     },
+                    Meta = meta,
                 });
             }
 

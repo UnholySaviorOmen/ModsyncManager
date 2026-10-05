@@ -200,6 +200,8 @@ public class InstallPipelineProgressTests : IDisposable
             new SyncArchivesStep(
                 registry, hashCache,
                 NullLogger<SyncArchivesStep>.Instance),
+            new GenerateArchiveMetaStep(
+                NullLogger<GenerateArchiveMetaStep>.Instance),
             new ExecuteExtensionsStep(
                 extractor,
                 NullLogger<ExecuteExtensionsStep>.Instance),
@@ -249,23 +251,22 @@ public class InstallPipelineProgressTests : IDisposable
 
         progress.Reports.Should().NotBeEmpty();
 
-        // Все TotalSteps == 11.
-        progress.Reports.Select(r => r.TotalSteps)
-            .Should().AllBeEquivalentTo(11);
+        // Все TotalSteps == 12.
+        progress.Reports.Should().OnlyContain(r => r.TotalSteps == 12);
 
         // StepName непустой у всех.
         progress.Reports.Select(r => r.StepName)
             .Should().NotContainNulls()
             .And.OnlyContain(s => !string.IsNullOrWhiteSpace(s));
 
-        // Каждый StepIndex 1..11 представлен хотя бы одним репортом.
+        // Каждый StepIndex 1..12 представлен хотя бы одним репортом.
         var distinctIndices = progress.Reports
             .Select(r => r.StepIndex)
             .Distinct()
             .OrderBy(x => x)
             .ToList();
 
-        distinctIndices.Should().Equal(Enumerable.Range(1, 11));
+        distinctIndices.Should().Equal(Enumerable.Range(1, 12));
 
         // Первый репорт каждого StepIndex — в порядке возрастания.
         var firstReportByStep = progress.Reports
@@ -365,7 +366,7 @@ public class InstallPipelineProgressTests : IDisposable
             progress);
 
         // Отбираем только репорты формата "Syncing: N / M mods"
-        // (SyncMods, StepIndex 9).
+        // (SyncMods, StepIndex 10).
         var syncReports = progress.Reports
             .Where(r => r.Detail is not null
                      && r.Detail.StartsWith("Syncing: ", StringComparison.Ordinal))
@@ -376,7 +377,7 @@ public class InstallPipelineProgressTests : IDisposable
 
         syncReports.Should().AllSatisfy(r =>
         {
-            r.StepIndex.Should().Be(9);
+            r.StepIndex.Should().Be(10);
             r.StepName.Should().Be("SyncMods");
         });
 

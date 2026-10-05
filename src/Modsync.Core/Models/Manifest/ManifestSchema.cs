@@ -5,7 +5,7 @@ namespace Modsync.Core.Models.Manifest;
 
 /// <summary>
 /// Поддерживаемые версии схемы манифеста.
-/// Единственная точка правды: packer пишет SchemaVersion из Supported,
+/// Единственная точка правды: packer пишет SchemaVersion из Current,
 /// installer (ReadManifestStep) и verify (VerifyPipeline) читают
 /// через IsSupported.
 /// </summary>

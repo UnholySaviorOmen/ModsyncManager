@@ -29,7 +29,9 @@ public class InstallSummaryBuilderTests
         IReadOnlyList<string>? xstSkipped = null,
         int profileMods = 0,
         int profilePlugins = 0,
-        int profileLoadorder = 0)
+        int profileLoadorder = 0,
+        IReadOnlyList<string>? archiveMetaWritten = null,
+        IReadOnlyList<string>? archiveMetaSkipped = null)
     {
         var manifest = new ModlistManifest
         {
@@ -92,6 +94,11 @@ public class InstallSummaryBuilderTests
                 Downloaded = archiveDownloaded ?? Array.Empty<string>(),
                 Skipped = archiveSkipped ?? Array.Empty<string>(),
             },
+            GenerateArchiveMeta = new GenerateArchiveMetaStep.Output
+            {
+                Written = archiveMetaWritten ?? Array.Empty<string>(),
+                Skipped = archiveMetaSkipped ?? Array.Empty<string>(),
+            },
             ExecuteExtensions = new ExecuteExtensionsStep.Output
             {
                 Written = extWritten ?? Array.Empty<string>(),
@@ -152,6 +159,9 @@ public class InstallSummaryBuilderTests
         summary.MetaIniWritten.Should().Be(0);
         summary.MetaIniDeleted.Should().Be(0);
 
+        summary.ArchiveMetaWritten.Should().Be(0);
+        summary.ArchiveMetaSkipped.Should().Be(0);
+
         summary.ExtensionsWritten.Should().Be(0);
         summary.ExtensionsSkipped.Should().Be(0);
 
@@ -182,7 +192,9 @@ public class InstallSummaryBuilderTests
             xstSkipped: new[] { "x2", "x3" },
             profileMods: 42,
             profilePlugins: 12,
-            profileLoadorder: 7);
+            profileLoadorder: 7,
+            archiveMetaWritten: new[] { "am1", "am2" },
+            archiveMetaSkipped: new[] { "am3" });
 
         var summary = InstallSummaryBuilder.Build(output);
 
@@ -197,6 +209,9 @@ public class InstallSummaryBuilderTests
 
         summary.MetaIniWritten.Should().Be(1);
         summary.MetaIniDeleted.Should().Be(2);
+
+        summary.ArchiveMetaWritten.Should().Be(2);
+        summary.ArchiveMetaSkipped.Should().Be(1);
 
         summary.ExtensionsWritten.Should().Be(2);
         summary.ExtensionsSkipped.Should().Be(1);

@@ -245,4 +245,80 @@ public class IndexArchivesStepTests : IDisposable
         result.Resolved[0].Id.Should().Be("nexus_skyrimspecialedition_1_1");
         result.Resolved[1].Id.Should().Be("nexus_skyrimspecialedition_2_2");
     }
+
+    [Fact]
+    public async Task Execute_WithValidMeta_PopulatesArchiveEntryMeta()
+    {
+        WriteFile("SkyUI.7z", "fake archive content");
+        WriteFile("SkyUI.7z.meta",
+            "[General]\r\n" +
+            "gameName=Skyrim Special Edition\r\n" +
+            "gameID=skyrimspecialedition\r\n" +
+            "modID=3863\r\n" +
+            "fileID=1000172397\r\n" +
+            "version=5.1\r\n" +
+            "repository=Nexus\r\n" +
+            "url=https://www.nexusmods.com/skyrimspecialedition/mods/3863\r\n" +
+            "notes=test note\r\n");
+
+        var result = await _step.ExecuteAsync(MakeInput(), CancellationToken.None);
+
+        result.Resolved.Should().HaveCount(1);
+        var entry = result.Resolved[0];
+        entry.Meta.Should().NotBeNull();
+        entry.Meta!.GameName.Should().Be("Skyrim Special Edition");
+        entry.Meta!.GameId.Should().Be("skyrimspecialedition");
+        entry.Meta!.ModId.Should().Be(3863);
+        entry.Meta!.FileId.Should().Be(1000172397);
+        entry.Meta!.Version.Should().Be("5.1");
+        entry.Meta!.Repository.Should().Be("Nexus");
+        entry.Meta!.Url.Should().Be("https://www.nexusmods.com/skyrimspecialedition/mods/3863");
+        entry.Meta!.Notes.Should().Be("test note");
+    }
+
+    [Fact]
+    public async Task Execute_WithoutMeta_MetaIsNull()
+    {
+        WriteFile("SomeMod.7z", "fake content");
+
+        var config = EmptyConfig() with
+        {
+            ArchiveSources = new[]
+            {
+                new PackArchiveSource
+                {
+                    Archive = "SomeMod.7z",
+                    Sources = new ArchiveSourceRef[]
+                    {
+                        new MirrorSourceRef
+                        {
+                            Url = "https://example.com/SomeMod.7z",
+                            Hash = new Modsync.Core.Models.Hashing.XxHash64Value(0xabc),
+                        },
+                    },
+                },
+            },
+        };
+
+        var result = await _step.ExecuteAsync(
+            MakeInput(config), CancellationToken.None);
+
+        result.Resolved.Should().HaveCount(1);
+        result.Resolved[0].Meta.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Execute_WithInvalidMeta_FallsBackToUnresolved_MetaNotSet()
+    {
+        WriteFile("Bad.7z", "fake");
+        WriteFile("Bad.7z.meta",
+            "[General]\r\ndirectURL=https://example.com/x.7z\r\n");
+
+        var result = await _step.ExecuteAsync(MakeInput(), CancellationToken.None);
+
+        // Невалидный .meta (нет modID/fileID) → Unresolved.
+        result.Resolved.Should().BeEmpty();
+        result.Unresolved.Should().HaveCount(1);
+        result.Unresolved[0].FileName.Should().Be("Bad.7z");
+    }
 }

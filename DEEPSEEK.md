@@ -1,7 +1,7 @@
 # ModsyncManager — состояние проекта и план работ
 
 **Обновлено:** 2026-10-05
-**Всего тестов:** 1244, 0 failed
+**Всего тестов:** 1256, 0 failed
 **Текущий блок:** все запланированные блоки закрыты
 **Следующий блок:** (не определён)
 
@@ -159,6 +159,25 @@ DEEPSEEK.md — только по запросу.
   для config и кнопка `Pack` удалены; две кнопки
   `Load config…` / `Create config…` открывают embedded-форму
   `PackConfigVM`. `IPackRunner.RunAsync` удалён.
+- ✅ **Блок 38.1** — `MetaReader`/`MetaFile` удалены.
+  Парсинг `.meta` унифицирован через `MetaIniReader` (тот же
+  формат INI: `[General]` + `[installedFiles]`, что и
+  `mods/<Name>/meta.ini`).
+- ✅ **Блок 38.2** — `ArchiveEntry.Meta` (`ModMeta?`) —
+  опциональное поле. Схема манифеста остаётся `1.0.0`,
+  поле не пишется в JSON при `null`.
+- ✅ **Блок 38.3** — packer: `IndexArchivesStep` заполняет
+  `ArchiveEntry.Meta` для nexus-архивов (читает `.meta`
+  через `MetaIniReader`, если `ModId`/`FileId` валидны).
+- ✅ **Блок 38.4** — installer: `GenerateArchiveMetaStep`
+  восстанавливает `downloads/<archive>.meta` для архивов
+  с `Meta != null`. Шаг между `SyncArchivesStep` и
+  `ExecuteExtensionsStep`. `InstallPipeline` теперь 12 шагов.
+  `InstallSummary` расширен (`ArchiveMetaWritten/Skipped`).
+- ✅ **Блок 38.5** — verify: `VerifyPipeline.CheckArchiveMeta`
+  проверяет `.meta` для архивов и MO2-архива. Если
+  `Meta != null` — файл должен быть и совпадать; если
+  `Meta == null` — не ошибка (даже если файл есть).
 
 ### В работе
 
@@ -804,6 +823,30 @@ Owner-тип не может быть static-классом (CS0718).
 и `ColumnDefinitions`. Для зазоров использовать `StackPanel.Spacing`
 или `Margin` у дочерних элементов.
 
+### Про `.meta` для архивов в `downloads/`
+
+`.meta`-файлы MO2 (`downloads/<archive>.7z.meta`) — **отдельная
+сущность** от `mods/<Name>/meta.ini`. Формат одинаковый
+(`[General]` + `[installedFiles]`), но семантика разная:
+
+- `mods/<Name>/meta.ini` — метаданные **мода** (что за мод, откуда).
+- `downloads/<archive>.7z.meta` — метаданные **архива** (откуда
+  скачан). Без `.meta` packer не может определить, что архив
+  с Nexus, и при повторном pack видит его как unresolved.
+
+**До блока 38** installer не восстанавливал `.meta` для архивов.
+При повторном pack nexus-архивы становились unmatched. Решение:
+`ArchiveEntry.Meta` в манифесте + `GenerateArchiveMetaStep`
+в installer-е + `CheckArchiveMeta` в verify.
+
+`.meta` пишется **только** для nexus-архивов (`ModId`/`FileId`
+валидны). Для local-архивов `ArchiveEntry.Meta = null` —
+нечего восстанавливать.
+
+Не удаляем `.meta`, если он есть, а в манифесте `Meta == null`:
+автор мог положить вручную, packer в следующий раз прочитает
+и включит в манифест.
+
 ---
 
 ## Технический долг
@@ -866,7 +909,39 @@ Owner-тип не может быть static-классом (CS0718).
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
-- - **2026-10-05** — Pack UX rework (блоки 36, 37).
+- **2026-10-05** — Восстановление `.meta` для архивов (блок 38).
+  - **Проблема:** при install в `downloads/` не восстанавливались
+    `.meta`-файлы MO2. При повторном pack (например, для обновления
+    сборки) packer видел nexus-архивы как unresolved — моды,
+    ссылающиеся на них, становились unmatched. Замкнутый круг.
+  - **38.1** — `MetaReader`/`MetaFile` удалены. Парсинг `.meta`
+    унифицирован через `MetaIniReader`: формат `.meta` и
+    `mods/<Name>/meta.ini` одинаковый (`[General]` +
+    `[installedFiles]`), `MetaIniReader` уже умел читать оба.
+    Валидация «это nexus-архив» — `ModId.HasValue &&
+    FileId.HasValue`. Тесты перенесены в `MetaIniReaderTests`.
+  - **38.2** — `ArchiveEntry.Meta` (`ModMeta?`) — опциональное
+    поле. В JSON не пишется, если `null`. Схема манифеста
+    остаётся `1.0.0` (приложение не в продакшене).
+  - **38.3** — packer: `IndexArchivesStep.ProcessOneFile`
+    заполняет `ArchiveEntry.Meta` при чтении `.meta`
+    (только для nexus-архивов, где `ModId`/`FileId` валидны).
+    Для local-архивов `Meta = null`.
+  - **38.4** — installer: `GenerateArchiveMetaStep` —
+    для каждого `ArchiveEntry` с `Meta != null` пишет
+    `downloads/<archive>.meta` через `MetaIniWriter`.
+    Идемпотентен (перезапись при повторном запуске).
+    `null` — не трогаем (не удаляем, если файл есть).
+    `InstallPipeline` — 12 шагов (было 11), `StepNames[6] =
+    "GenerateArchiveMeta"`. `InstallSummary` расширен
+    (`ArchiveMetaWritten`, `ArchiveMetaSkipped`).
+  - **38.5** — verify: `VerifyPipeline.CheckArchiveMeta` —
+    отдельная проверка на каждый архив (включая MO2-архив).
+    `Meta != null` → файл должен быть и совпадать с манифестом
+    (семантическое сравнение полей). `Meta == null` → не ошибка,
+    даже если файл есть («not expected (file present, ignored)»).
+  - **Итог:** `dotnet test` — 1256 тестов, 0 failed.
+- **2026-10-05** — Pack UX rework (блоки 36, 37).
   - **Блок 36** — patch-архив для unmatched файлов.
     - **`PatchArchiveBuilder`** (`Modsync.Pack`) — собирает
       `ModsyncManager_Output.zip` из `__ModsyncManager_Output/`,

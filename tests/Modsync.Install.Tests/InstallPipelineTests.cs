@@ -149,6 +149,8 @@ public class InstallPipelineTests : IDisposable
             new SyncArchivesStep(
                 registry, _hashCache,
                 NullLogger<SyncArchivesStep>.Instance),
+            new GenerateArchiveMetaStep(
+                NullLogger<GenerateArchiveMetaStep>.Instance),
             new ExecuteExtensionsStep(
                 extractor,
                 NullLogger<ExecuteExtensionsStep>.Instance),

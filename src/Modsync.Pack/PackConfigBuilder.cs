@@ -296,8 +296,10 @@ public sealed class PackConfigBuilder
 
         try
         {
-            var meta = MetaReader.TryRead(metaPath);
-            return meta is not null;
+            var meta = MetaIniReader.TryRead(metaPath);
+            return meta is not null
+                && meta.ModId.HasValue
+                && meta.FileId.HasValue;
         }
         catch
         {

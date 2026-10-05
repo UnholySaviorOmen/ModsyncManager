@@ -256,6 +256,8 @@ public class PackInstallRoundtripTests : IDisposable
             new SyncArchivesStep(
                 registry, hashCache,
                 NullLogger<SyncArchivesStep>.Instance),
+            new GenerateArchiveMetaStep(
+                NullLogger<GenerateArchiveMetaStep>.Instance),
             new ExecuteExtensionsStep(
                 extractor,
                 NullLogger<ExecuteExtensionsStep>.Instance),
@@ -271,7 +273,6 @@ public class PackInstallRoundtripTests : IDisposable
                 NullLogger<RegenerateProfileStep>.Instance),
             NullLogger<InstallPipeline>.Instance);
     }
-
     private void PreloadTargetDownloads()
     {
         var srcDownloads = Path.Combine(_sourceInstance, "MO2", "downloads");

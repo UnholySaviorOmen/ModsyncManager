@@ -38,6 +38,10 @@ public sealed record InstallSummary
     public required int MetaIniWritten { get; init; }
     public required int MetaIniDeleted { get; init; }
 
+    // --- Archive .meta ---
+    public required int ArchiveMetaWritten { get; init; }
+    public required int ArchiveMetaSkipped { get; init; }
+
     // --- MO2 extensions ---
     public required int ExtensionsWritten { get; init; }
     public required int ExtensionsSkipped { get; init; }

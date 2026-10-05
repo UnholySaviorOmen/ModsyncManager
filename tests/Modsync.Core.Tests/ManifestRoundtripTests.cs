@@ -119,4 +119,112 @@ public class ManifestRoundtripTests
         var parsed = XxHash64Value.Parse(h.ToString());
         parsed.Should().Be(h);
     }
+
+    [Fact]
+    public void Roundtrip_ArchiveWithMeta_PreservesMeta()
+    {
+        var manifest = MakeManifestWithArchives(new[]
+        {
+            new ArchiveEntry
+            {
+                Id = "nexus_skyrimspecialedition_3863_1000172397",
+                Name = "SkyUI.7z",
+                Size = 1000,
+                Hash = new XxHash64Value(0x1234),
+                Sources = new ArchiveSourceRef[]
+                {
+                    new NexusSourceRef
+                    {
+                        ModId = 3863,
+                        FileId = 1000172397,
+                        Game = "skyrimspecialedition",
+                    },
+                },
+                Meta = new ModMeta
+                {
+                    GameName = "Skyrim Special Edition",
+                    GameId = "skyrimspecialedition",
+                    ModId = 3863,
+                    FileId = 1000172397,
+                    Version = "5.1",
+                    Repository = "Nexus",
+                    Url = "https://www.nexusmods.com/skyrimspecialedition/mods/3863",
+                    Notes = "test note",
+                },
+            },
+        });
+
+        var json = ManifestJson.Serialize(manifest);
+        var back = ManifestJson.Deserialize(json);
+
+        back.Archives.Should().HaveCount(1);
+        back.Archives[0].Meta.Should().NotBeNull();
+        back.Archives[0].Meta!.ModId.Should().Be(3863);
+        back.Archives[0].Meta!.FileId.Should().Be(1000172397);
+        back.Archives[0].Meta!.Version.Should().Be("5.1");
+        back.Archives[0].Meta!.Notes.Should().Be("test note");
+    }
+
+    [Fact]
+    public void Roundtrip_ArchiveWithoutMeta_MetaIsNull()
+    {
+        var manifest = MakeManifestWithArchives(new[]
+        {
+            new ArchiveEntry
+            {
+                Id = "local_somemod",
+                Name = "SomeMod.7z",
+                Size = 1000,
+                Hash = new XxHash64Value(0x1234),
+                Sources = Array.Empty<ArchiveSourceRef>(),
+                Meta = null,
+            },
+        });
+
+        var json = ManifestJson.Serialize(manifest);
+        var back = ManifestJson.Deserialize(json);
+
+        back.Archives.Should().HaveCount(1);
+        back.Archives[0].Meta.Should().BeNull();
+
+        // Не должно быть ключа "meta": null в JSON.
+        json.Should().NotContain("\"meta\": null");
+    }
+
+    private static ModlistManifest MakeManifestWithArchives(
+        IReadOnlyList<ArchiveEntry> archives) => new()
+        {
+            SchemaVersion = "1.0.0",
+            ManifestVersion = "1.0.0",
+            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedBy = "modsyncmanager-pack/0.1.0",
+            Meta = new ManifestMeta
+            {
+                Name = "Test",
+                Version = "1.0.0",
+                Author = "t",
+                Game = "skyrimspecialedition",
+                GameVersion = "1.6.1170",
+            },
+            Execution = new ExecutionPolicy(),
+            Mo2 = new Mo2Section
+            {
+                Version = "2.5.2",
+                Profile = "Default",
+                Archive = new ArchiveEntry
+                {
+                    Id = "mo2",
+                    Name = "MO2.7z",
+                    Size = 0,
+                    Hash = new XxHash64Value(0),
+                    Sources = Array.Empty<ArchiveSourceRef>(),
+                },
+                Extensions = Array.Empty<ExtensionEntry>(),
+            },
+            StockGame = new StockGameSection { Extras = Array.Empty<ExtensionEntry>() },
+            Archives = archives,
+            Mods = Array.Empty<ModEntry>(),
+            Plugins = Array.Empty<PluginEntry>(),
+            Loadorder = Array.Empty<string>(),
+        };
 }

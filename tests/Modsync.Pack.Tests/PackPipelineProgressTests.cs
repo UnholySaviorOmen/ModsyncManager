@@ -198,13 +198,11 @@ public class PackPipelineProgressTests : IDisposable
         progress.Reports.Should().NotBeEmpty();
 
         // Все TotalSteps == 14.
-        progress.Reports.Select(r => r.TotalSteps)
-            .Should().AllBeEquivalentTo(14);
+        progress.Reports.Should().OnlyContain(r => r.TotalSteps == 14);
 
         // StepName непустой.
-        progress.Reports.Select(r => r.StepName)
-            .Should().NotContainNulls()
-            .And.OnlyContain(s => !string.IsNullOrWhiteSpace(s));
+        progress.Reports.Should().OnlyContain(
+            r => !string.IsNullOrWhiteSpace(r.StepName));
 
         // Каждый StepIndex 1..14 представлен хотя бы одним репортом.
         var distinctIndices = progress.Reports
@@ -228,6 +226,7 @@ public class PackPipelineProgressTests : IDisposable
         firstReportByStep[0].StepName.Should().Be("ReadConfig");
         firstReportByStep[^1].StepName.Should().Be("WriteManifest");
     }
+
     [Fact]
     public async Task Execute_WithoutProgress_StillWorks()
     {

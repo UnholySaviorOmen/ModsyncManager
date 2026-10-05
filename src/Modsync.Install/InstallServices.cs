@@ -81,6 +81,7 @@ public static class InstallServices
         services.TryAddSingleton<BootstrapInstanceStep>();
         services.TryAddSingleton<BootstrapMo2Step>();
         services.TryAddSingleton<SyncArchivesStep>();
+        services.TryAddSingleton<GenerateArchiveMetaStep>();
         services.TryAddSingleton<ExecuteExtensionsStep>();
         services.TryAddSingleton<ExecuteExtrasStep>();
         services.TryAddSingleton<SyncModsStep>();

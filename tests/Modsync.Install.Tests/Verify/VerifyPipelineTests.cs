@@ -1074,4 +1074,240 @@ public class VerifyPipelineTests : IDisposable
             Plugins = source.Plugins,
             Loadorder = source.Loadorder,
         };
+
+    // ------------------------------------------------------------------
+    //  41–46. Archive .meta
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void ArchiveMeta_NotExpected_NoFile_Passes()
+    {
+        BuildValidInstance();
+        var report = Run();
+
+        HasFailure(report, "MO2 archive / meta").Should().BeFalse();
+        HasFailure(report, "Archive: TestMod.7z / meta").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ArchiveMeta_Expected_FileMissing_Fails()
+    {
+        var inst = BuildValidInstance();
+
+        // Перезаписываем манифест с Meta != null, но .meta-файла нет.
+        var manifestWithMeta = CloneManifestWithArchives(inst.Manifest,
+            new[]
+            {
+                new ArchiveEntry
+                {
+                    Id = "nexus_skyrimspecialedition_1_1",
+                    Name = ModArchiveName,
+                    Size = inst.Manifest.Archives[0].Size,
+                    Hash = inst.Manifest.Archives[0].Hash,
+                    Sources = inst.Manifest.Archives[0].Sources,
+                    Meta = new ModMeta
+                    {
+                        GameName = "Skyrim Special Edition",
+                        GameId = "skyrimspecialedition",
+                        ModId = 1,
+                        FileId = 1,
+                        Version = "1.0.0",
+                        Notes = "test note",
+                    },
+                },
+            });
+
+        ManifestJson.Save(
+            Path.Combine(_targetDir, "modlist.json"),
+            manifestWithMeta);
+
+        var report = Run();
+
+        report.IsOk.Should().BeFalse();
+        HasFailure(report, $"Archive: {ModArchiveName} / meta").Should().BeTrue();
+    }
+
+    [Fact]
+    public void ArchiveMeta_Expected_FilePresentMatching_Passes()
+    {
+        var inst = BuildValidInstance();
+
+        var expectedMeta = new ModMeta
+        {
+            GameName = "Skyrim Special Edition",
+            GameId = "skyrimspecialedition",
+            ModId = 1,
+            FileId = 1,
+            Version = "1.0.0",
+            Notes = "test note",
+        };
+
+        var manifestWithMeta = CloneManifestWithArchives(inst.Manifest,
+            new[]
+            {
+                new ArchiveEntry
+                {
+                    Id = "nexus_skyrimspecialedition_1_1",
+                    Name = ModArchiveName,
+                    Size = inst.Manifest.Archives[0].Size,
+                    Hash = inst.Manifest.Archives[0].Hash,
+                    Sources = inst.Manifest.Archives[0].Sources,
+                    Meta = expectedMeta,
+                },
+            });
+
+        ManifestJson.Save(
+            Path.Combine(_targetDir, "modlist.json"),
+            manifestWithMeta);
+
+        MetaIniWriter.WriteFile(
+            Path.Combine(inst.DownloadsPath, ModArchiveName + ".meta"),
+            expectedMeta);
+
+        var report = Run();
+
+        HasFailure(report, $"Archive: {ModArchiveName} / meta").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ArchiveMeta_Expected_ContentDiffers_Fails()
+    {
+        var inst = BuildValidInstance();
+
+        var expectedMeta = new ModMeta
+        {
+            ModId = 1,
+            FileId = 1,
+            Version = "1.0.0",
+        };
+
+        var manifestWithMeta = CloneManifestWithArchives(inst.Manifest,
+            new[]
+            {
+                new ArchiveEntry
+                {
+                    Id = "nexus_skyrimspecialedition_1_1",
+                    Name = ModArchiveName,
+                    Size = inst.Manifest.Archives[0].Size,
+                    Hash = inst.Manifest.Archives[0].Hash,
+                    Sources = inst.Manifest.Archives[0].Sources,
+                    Meta = expectedMeta,
+                },
+            });
+
+        ManifestJson.Save(
+            Path.Combine(_targetDir, "modlist.json"),
+            manifestWithMeta);
+
+        // Пишем .meta с другим содержимым.
+        var actualMeta = expectedMeta with { Version = "9.9" };
+        MetaIniWriter.WriteFile(
+            Path.Combine(inst.DownloadsPath, ModArchiveName + ".meta"),
+            actualMeta);
+
+        var report = Run();
+
+        report.IsOk.Should().BeFalse();
+        var failure = report.Failures
+            .FirstOrDefault(f => f.Name.Contains($"{ModArchiveName} / meta"));
+        failure.Should().NotBeNull();
+        failure!.Message.Should().Contain("version");
+    }
+
+    [Fact]
+    public void ArchiveMeta_NotExpected_FilePresent_StillPasses()
+    {
+        var inst = BuildValidInstance();
+
+        // Пишем .meta, хотя в манифесте Meta == null.
+        MetaIniWriter.WriteFile(
+            Path.Combine(inst.DownloadsPath, ModArchiveName + ".meta"),
+            new ModMeta { ModId = 1, FileId = 1 });
+
+        var report = Run();
+
+        // Не ошибка — просто отметка «not expected (file present, ignored)».
+        HasFailure(report, $"Archive: {ModArchiveName} / meta").Should().BeFalse();
+    }
+
+    [Fact]
+    public void ArchiveMeta_Mo2Archive_Expected_FileMissing_Fails()
+    {
+        var inst = BuildValidInstance();
+
+        var mo2ArchiveWithMeta = new ArchiveEntry
+        {
+            Id = inst.Manifest.Mo2.Archive.Id,
+            Name = inst.Manifest.Mo2.Archive.Name,
+            Size = inst.Manifest.Mo2.Archive.Size,
+            Hash = inst.Manifest.Mo2.Archive.Hash,
+            Sources = inst.Manifest.Mo2.Archive.Sources,
+            Meta = new ModMeta
+            {
+                GameName = "Skyrim Special Edition",
+                ModId = 0,
+                FileId = 0,
+            },
+        };
+
+        var manifestWithMeta = CloneManifestWithMo2Archive(
+            inst.Manifest, mo2ArchiveWithMeta);
+
+        ManifestJson.Save(
+            Path.Combine(_targetDir, "modlist.json"),
+            manifestWithMeta);
+
+        var report = Run();
+
+        report.IsOk.Should().BeFalse();
+        HasFailure(report, "MO2 archive / meta").Should().BeTrue();
+    }
+
+    // ------------------------------------------------------------------
+    //  Clone helpers
+    // ------------------------------------------------------------------
+
+    private static ModlistManifest CloneManifestWithArchives(
+        ModlistManifest source,
+        IReadOnlyList<ArchiveEntry> archives)
+        => new()
+        {
+            SchemaVersion = source.SchemaVersion,
+            ManifestVersion = source.ManifestVersion,
+            CreatedAt = source.CreatedAt,
+            CreatedBy = source.CreatedBy,
+            Meta = source.Meta,
+            Execution = source.Execution,
+            Mo2 = source.Mo2,
+            StockGame = source.StockGame,
+            Archives = archives,
+            Mods = source.Mods,
+            Plugins = source.Plugins,
+            Loadorder = source.Loadorder,
+        };
+
+    private static ModlistManifest CloneManifestWithMo2Archive(
+        ModlistManifest source,
+        ArchiveEntry mo2Archive)
+        => new()
+        {
+            SchemaVersion = source.SchemaVersion,
+            ManifestVersion = source.ManifestVersion,
+            CreatedAt = source.CreatedAt,
+            CreatedBy = source.CreatedBy,
+            Meta = source.Meta,
+            Execution = source.Execution,
+            Mo2 = new Mo2Section
+            {
+                Version = source.Mo2.Version,
+                Profile = source.Mo2.Profile,
+                Archive = mo2Archive,
+                Extensions = source.Mo2.Extensions,
+            },
+            StockGame = source.StockGame,
+            Archives = source.Archives,
+            Mods = source.Mods,
+            Plugins = source.Plugins,
+            Loadorder = source.Loadorder,
+        };
 }

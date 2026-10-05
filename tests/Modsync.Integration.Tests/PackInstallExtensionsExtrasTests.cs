@@ -365,6 +365,8 @@ public class PackInstallExtensionsExtrasTests : IDisposable
             new SyncArchivesStep(
                 registry, hashCache,
                 NullLogger<SyncArchivesStep>.Instance),
+            new GenerateArchiveMetaStep(
+                NullLogger<GenerateArchiveMetaStep>.Instance),
             new ExecuteExtensionsStep(
                 extractor,
                 NullLogger<ExecuteExtensionsStep>.Instance),

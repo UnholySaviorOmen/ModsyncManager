@@ -41,6 +41,9 @@ public static class InstallSummaryBuilder
             MetaIniWritten = output.GenerateMetaIni.Written.Count,
             MetaIniDeleted = output.GenerateMetaIni.Deleted.Count,
 
+            ArchiveMetaWritten = output.GenerateArchiveMeta.Written.Count,
+            ArchiveMetaSkipped = output.GenerateArchiveMeta.Skipped.Count,
+
             ExtensionsWritten = output.ExecuteExtensions.Written.Count,
             ExtensionsSkipped = output.ExecuteExtensions.Skipped.Count,
 

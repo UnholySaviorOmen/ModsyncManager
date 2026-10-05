@@ -1,7 +1,7 @@
 # ModsyncManager — Справочник
 
-**Версия документа:** 6.0
-**Обновлено:** 2026-10-02
+**Версия документа:** 6.1
+**Обновлено:** 2026-10-05
 
 Формальный справочник по форматам, pipeline и обработке ошибок.
 Состояние проекта и план работ — в `DEEPSEEK.md`.
@@ -18,7 +18,7 @@
     - 6.2. [modlist.json](#modlistjson)
     - 6.3. [Директивы](#директивы)
     - 6.4. [Источники архивов](#источники-архивов)
-    - 6.5. [Формат .meta](#формат-meta)
+    - 6.5. [Формат .meta архива](#формат-meta-архива)
     - 6.6. [Формат meta.ini мода](#формат-meta-ini-мода)
     - 6.7. [__ModsyncManager_Output](#__modsyncmanager_output)
     - 6.8. [Формат modsyncmanager-nxm-handler.log](#формат-modsyncmanager-nxm-handlerlog)
@@ -68,6 +68,13 @@
 **Философия installer-а:** тупой исполнитель директив. Не проверяет
 игру, версии, совместимость. Просто воссоздаёт структуру, которую
 сделал автор.
+
+**Метаданные архивов (`.meta`) — часть воспроизведения.** Packer
+читает `.meta`-файлы MO2 в `downloads/` (если они есть) и сохраняет
+их содержимое в манифест (`ArchiveEntry.Meta`). Installer
+восстанавливает `.meta` на целевой машине. Verify проверяет
+соответствие. Без этого при повторном pack nexus-архивы виделись бы
+как unresolved, а моды, ссылающиеся на них, становились бы unmatched.
 
 **Целевая платформа:** Windows 10 1809+ / Windows 11.
 **Целевая версия MO2:** 2.5.2.
@@ -224,9 +231,11 @@ Slug, ArchiveId, абстракции, `SevenZipExtractor`, `TempWorkspace`,
 `ModsyncPaths`, `IHashCache` / `FileHashCache` / `SqliteHashCache`,
 `ArchiveDownloadHelper`, `CancellationHelper`, `StepProgress`.
 
-**Modsync.Platform.MO2:** чтение/запись MO2-файлов, `MetaReader`,
-`MetaIniReader`, `MetaIniWriter`, `ModlistWriter`, `PluginsWriter`,
-`LoadorderWriter`.
+**Modsync.Platform.MO2:** чтение/запись MO2-файлов, `MetaIniReader`,
+`MetaIniWriter`, `ModlistWriter`, `PluginsWriter`, `LoadorderWriter`.
+Единый парсер INI-формата `[General]` используется и для
+`mods/<Name>/meta.ini`, и для `downloads/<archive>.meta` —
+формат у них одинаковый.
 
 **Modsync.Platform.Nexus:** HTTP-клиент к Nexus API
 (`NexusClient`), `NexusDownloader`, `INexusApiKeyProvider` +
@@ -249,13 +258,16 @@ Slug, ArchiveId, абстракции, `SevenZipExtractor`, `TempWorkspace`,
 сканирует `MO2/downloads/` на non-nexus архивы, читает профили,
 собирает `PackConfig` из пользовательского ввода + хардкода
 `mo2`-секции. **`PatchArchiveBuilder`** — сервис сборки
-patch-архива из `__ModsyncManager_Output/`. DI-extension:
-`AddModsyncPack`.
+patch-архива из `__ModsyncManager_Output/`. **`IndexArchivesStep`**
+читает `.meta` архивов через `MetaIniReader` и сохраняет
+`ArchiveEntry.Meta` в манифесте. DI-extension: `AddModsyncPack`.
 
-**Modsync.Install:** `InstallPipeline` + 11 шагов; `MirrorDownloader`,
-`DownloaderRegistry`; `VerifyPipeline`. `InstallInputFactory`,
-`InstallSummary` + `InstallSummaryBuilder`. DI-extension:
-`AddModsyncInstall`.
+**Modsync.Install:** `InstallPipeline` + 12 шагов; `MirrorDownloader`,
+`DownloaderRegistry`; `GenerateArchiveMetaStep` — восстановление
+`downloads/<archive>.meta` для nexus-архивов (если
+`ArchiveEntry.Meta != null`). `VerifyPipeline` — read-only проверка,
+включая `.meta` для архивов. `InstallInputFactory`, `InstallSummary`
++ `InstallSummaryBuilder`. DI-extension: `AddModsyncInstall`.
 
 **ModsyncManager.NxmHandler:** exe. `Program.cs`, `NxmHandlerArgs`,
 `PipeClient`, `IHandlerLogger` / `HandlerLogger`. Парсит argv,
@@ -497,6 +509,18 @@ D:\Games\ModsyncManager\
 | `plugins` | Плагины с флагами. |
 | `loadorder` | Порядок загрузки. |
 
+**`ArchiveEntry`:**
+
+- `id` — канонический id.
+- `name` — имя файла в `downloads/`.
+- `size` — размер в байтах.
+- `hash` — `xxHash64`.
+- `sources` — источники скачивания (см. §6.4).
+- `meta` — опционально. Structured `[General]` из `.meta` MO2.
+  `null` для local-архивов; заполнено для nexus-архивов. Installer
+  восстанавливает `.meta` из этого поля. В JSON не пишется при `null`.
+  Формат — тот же `ModMeta`, что и `mods[].meta`.
+
 **`ModMeta`** (поле `mods[].meta`): все поля опциональны.
 `ModMeta.Empty` — валидное состояние. Поля: `GameName`, `GameId`,
 `ModId`, `FileId`, `Version`, `Repository`, `Url`, `Comments`,
@@ -530,24 +554,54 @@ D:\Games\ModsyncManager\
 
 **GitHub source** — удалён (12.10.1). Всё через `mirror`.
 
-### Формат .meta
+### Формат .meta архива
 
 Файл рядом с архивом в `downloads/`: `SkyUI.7z.meta`.
 
+Формат — **тот же INI**, что и `mods/<Name>/meta.ini`
+(см. §6.6): секция `[General]`, ключи `camelCase`, плюс
+опциональная секция `[installedFiles]` (игнорируется).
+
 ```
 [General]
-gameName=Skyrim
+gameName=Skyrim Special Edition
+gameID=skyrimspecialedition
 modID=3863
 fileID=1000172397
+version=5.1
+repository=Nexus
+url=https://www.nexusmods.com/skyrimspecialedition/mods/3863
+notes=
 ```
 
-Правила:
-- Ключи `modID` / `fileID` — case-sensitive (заглавные ID).
-- `gameName` — опционально.
-- Секция `[General]` — case-insensitive.
-- `.meta` без `modID`/`fileID` (или с lowercase) → `MetaReader.TryRead`
-  вернёт null → fallback на `archiveSources[]`.
-- `.meta` не считается архивом.
+**Чтение (`MetaIniReader.TryRead`):** единый парсер для `.meta` и
+`meta.ini`. Возвращает `ModMeta` или `null`, если файла нет.
+
+- Секция `[General]`. Ключи case-insensitive.
+- `[installedFiles]` игнорируется.
+- `category`, `newestVersion`, `nexusFileStatus`, timestamps —
+  игнорируются.
+- Если `[General]` пуста → `ModMeta.Empty`.
+
+**Проверка «это nexus-архив»:** `ModId.HasValue && FileId.HasValue`.
+Если в `.meta` нет `modID`/`fileID` — архив не считается nexus,
+packer переходит к `archiveSources[]`. Так `.meta` с `directURL`
+(не-Nexus) корректно отвергается.
+
+**Куда попадает:** `ArchiveEntry.Meta` в манифесте (`modlist.json`).
+
+**Восстановление:** `GenerateArchiveMetaStep` пишет
+`downloads/<archive>.meta` через `MetaIniWriter` для каждого
+`ArchiveEntry` с `Meta != null`.
+
+**Проверка:** `VerifyPipeline.CheckArchiveMeta` — если
+`ArchiveEntry.Meta != null`, файл должен существовать и совпадать
+семантически. Если `Meta == null` — отсутствие `.meta` не ошибка;
+файл, если есть, игнорируется («not expected (file present,
+ignored)»).
+
+**.meta не считается архивом** (`ArchiveExtensions.IsArchive`
+исключает `.meta`).
 
 ### Формат meta.ini мода
 
@@ -822,8 +876,9 @@ Packer запускается через `PackPipeline.ExecuteAsync`. В GUI —
 2. `ReadInstanceStep` — читает `modlist.txt`, `plugins.txt`,
    `loadorder.txt`. Возвращает `InstanceSnapshot`.
 3. `IndexArchivesStep` — индексирует `MO2/downloads/`, определяет
-   источник через `.meta` или `archiveSources[]`. Возвращает
-   `ArchiveIndex`.
+   источник через `.meta` или `archiveSources[]`. Читает `.meta`
+   через `MetaIniReader` и заполняет `ArchiveEntry.Meta`
+   (structured `[General]`). Возвращает `ArchiveIndex`.
 4. `ScanModsStep` — сканирует моды (кроме `[NoDelete]`).
    Возвращает `ModScanResult`.
 5. `ScanExtensionsStep` — сканирует `config.Mo2.Extensions[]`.
@@ -964,7 +1019,7 @@ Installer запускается через `InstallPipeline.ExecuteAsync`. В G
 
 **Расположение инстанса:** `<exeDir>/Instances/<normalize(meta.name)>/`.
 
-**Pipeline (11 шагов):**
+**Pipeline (12 шагов):**
 
 1. `ReadManifestStep` — читает `modlist.json`, валидирует
    `schemaVersion`.
@@ -979,18 +1034,24 @@ Installer запускается через `InstallPipeline.ExecuteAsync`. В G
    (если нет по хешу), распаковывает в `MO2/`.
 6. `SyncArchivesStep` — сканирует `downloads/` → hash → path,
    для каждого mod-архива скачивает или находит локально.
-7. `ExecuteExtensionsStep` — раскладывает `mo2.extensions[]`
+7. `GenerateArchiveMetaStep` — для каждого `ArchiveEntry`
+   с `Meta != null` пишет `downloads/<archive>.meta`. Не удаляет
+   `.meta`, если файл есть, а `Meta == null`. Идемпотентен.
+8. `ExecuteExtensionsStep` — раскладывает `mo2.extensions[]`
    в `MO2/`.
-8. `ExecuteExtrasStep` — раскладывает `stockGame.extras[]` в
+9. `ExecuteExtrasStep` — раскладывает `stockGame.extras[]` в
    `Stock Game/`.
-9. `SyncModsStep` — reconcile `mods/`.
-10. `GenerateMetaIniStep` — reconcile `meta.ini`.
-11. `RegenerateProfileStep` — генерирует `modlist.txt`/`plugins.txt`/
+10. `SyncModsStep` — reconcile `mods/`.
+11. `GenerateMetaIniStep` — reconcile `meta.ini`.
+12. `RegenerateProfileStep` — генерирует `modlist.txt`/`plugins.txt`/
     `loadorder.txt`.
 
 **Разделение ответственности:**
 - **MO2-логика** — в `BootstrapMo2Step`.
-- **Логика `mods/`** — в `SyncArchivesStep` + `SyncModsStep`.
+- **Логика `downloads/` (архивы)** — в `SyncArchivesStep`.
+- **Логика `.meta` архивов** — в `GenerateArchiveMetaStep`.
+- **Логика `mods/`** — в `SyncModsStep`.
+- **Логика `mods/<Name>/meta.ini`** — в `GenerateMetaIniStep`.
 - **Логика extensions** — в `ExecuteExtensionsStep`.
 - **Логика extras** — в `ExecuteExtrasStep`.
 
@@ -1370,6 +1431,8 @@ cache». Очищает таблицу `file_hashes`. `VACUUM` возвраща�
 | Сепаратор без папки | `LogDebug`, пропустить |
 | Дубликат `archiveId` | `InvalidOperationException` |
 | `.meta` без `modID`/`fileID` | Warning, fallback на `archiveSources` |
+| `.meta` валиден (есть `modID`/`fileID`) | `ArchiveEntry.Meta` заполнен |
+| `.meta` не валиден или отсутствует | `ArchiveEntry.Meta = null` |
 | Архив без `.meta` и без `archiveSources` | `UnresolvedArchive`, warning |
 | `mo2.archive` не найден в `downloads/` | Size = 0, hash из `mo2.source.hash` |
 | Hash MO2-архива mismatch | `InvalidOperationException` |
@@ -1399,6 +1462,10 @@ cache». Очищает таблицу `file_hashes`. `VACUUM` возвраща�
 | `mods[].meta != null` | `MetaIniWriter.WriteFile` |
 | `mods[].meta == null`, файл есть | Удалить |
 | `mods[].meta == null`, файла нет | Ничего не делать |
+| `archives[].meta != null` | `MetaIniWriter.WriteFile` в `downloads/<name>.meta` |
+| `archives[].meta == null`, файл `.meta` есть | Не трогать (не удаляем) |
+| `archives[].meta == null`, файла `.meta` нет | Ничего не делать |
+| `mo2.archive.meta != null` | `MetaIniWriter.WriteFile` |
 | MO2: локальный архив с нужным хешем | Использовать |
 | MO2: локальный архив с другим хешем | Перекачать |
 | MO2: архива нет | Скачать |
@@ -1433,6 +1500,19 @@ cache». Очищает таблицу `file_hashes`. `VACUUM` возвраща�
 
 **Сериализация:** `NexusFreeNxmProvider` использует
 `SemaphoreSlim(1,1)`.
+
+### Матрица verify
+
+| Ситуация | Поведение |
+|---|---|
+| `archives[].meta != null`, файл `.meta` отсутствует | Fail `Archive: <name> / meta` |
+| `archives[].meta != null`, файл есть, содержимое совпадает | Ok |
+| `archives[].meta != null`, файл есть, содержимое отличается | Fail со списком расхождений (`modID: expected X, got Y; ...`) |
+| `archives[].meta == null`, файла нет | Ok (`not expected`) |
+| `archives[].meta == null`, файл есть | Ok (`not expected (file present, ignored)`) |
+| `mo2.archive.meta != null`, файл `.meta` отсутствует | Fail `MO2 archive / meta` |
+| `mo2.archive.meta != null`, файл есть, содержимое совпадает | Ok |
+| `mo2.archive.meta == null`, файла нет | Ok (`not expected`) |
 
 ### Матрица GUI
 
