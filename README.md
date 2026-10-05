@@ -1,133 +1,150 @@
 # ModsyncManager
 
-> Инструмент для создания и установки воспроизводимых сборок
-> модов для Mod Organizer 2.
+> Tool for creating and installing reproducible mod packs
+> for Mod Organizer 2.
 
-[English version →](README.en.md)
+[Русская версия →](README.ru.md)
 
-## Что такое ModsyncManager
+## What is ModsyncManager
 
-ModsyncManager — упаковщик и установщик сборок для MO2. Автор
-сборки настраивает инстанс MO2 любым удобным способом,
-ModsyncManager создаёт манифест (`modlist.json`). Пользователь
-получает манифест, ModsyncManager восстанавливает инстанс
-байт-в-байт по хешам.
+ModsyncManager is a packer and installer for MO2 mod packs. A pack
+author sets up an MO2 instance however they like, and
+ModsyncManager produces a manifest (`modlist.json`). A user
+receives the manifest, and ModsyncManager reconstructs the instance
+byte-for-byte by hashes.
 
-ModsyncManager работает с **результатом** установки модов, а не с
-процессом. Как именно автор ставил моды — не важно.
+ModsyncManager works with the **result** of mod installation, not
+the process. How exactly the author installed the mods is
+irrelevant.
 
-## Почему ModsyncManager
+## Why ModsyncManager
 
-- **Манифест — единственный источник правды.** Состояние профиля
-  генерируется из манифеста, а не копируется.
-- **Файлы восстанавливаются по хешам `xxHash64`.** Не по именам и
-  путям — байт-в-байт.
-- **ModsyncManager не работает с игрой.** `Stock Game/` — просто
-  папка для extras. Никакой проверки игры, версий, совместимости.
-- **Всё, что не восстановимо из архивов, идёт в
-  `__ModsyncManager_Output`.** Автор сам решает, делать ли из
-  этого патч.
-- **Free-загрузка с Nexus через `nxm://` handler.** Без WebView2,
-  без встроенного браузера. Пользователь работает в своём
-  браузере.
-- **Никаких исполняемых скриптов.** Только декларативные
-  директивы.
-- **Установщик идемпотентен.** Можно запускать повторно.
+- **Manifest is the only source of truth.** Profile state is
+  generated from the manifest, not copied.
+- **Files are restored by `xxHash64` hashes.** Not by names and
+  paths — byte-for-byte.
+- **ModsyncManager does not touch the game.** `Stock Game/` is
+  just a folder for extras. No game detection, no version checks.
+- **Everything not recoverable from archives goes to
+  `__ModsyncManager_Output`.** The author decides whether to make
+  a patch.
+- **Free Nexus downloads via `nxm://` handler.** No WebView2, no
+  embedded browser. The user works in their own browser.
+- **No executable scripts.** Only declarative directives.
+- **Idempotent installer.** Can be run repeatedly.
+- **`.meta` files for archives are restored.** If the author has
+  a nexus archive with a `.meta` file, the installer recreates
+  the `.meta` on the target machine. Without this, a subsequent
+  pack would see the archive as unresolved.
 
-## Требования
+## Requirements
 
 - Windows 10 1809+ / Windows 11.
 - .NET 8 Runtime.
-- Mod Organizer 2.5.2 (ModsyncManager читает и пишет инстансы MO2).
+- Mod Organizer 2.5.2 (ModsyncManager reads and writes MO2
+  instances).
 
-## Установка
+## Installation
 
-1. Скачайте последний релиз: [Releases](../../releases).
-2. Распакуйте в любую папку.
-3. Запустите `ModsyncManager.exe`.
+1. Download the latest release from [Releases](../../releases).
+2. Extract to any folder.
+3. Run `ModsyncManager.exe`.
 
-## Как пользоваться
+## Usage
 
-### Создание сборки (packer)
+### Creating a pack (packer)
 
-1. Подготовьте инстанс MO2 с модами, плагинами и extras.
-2. Создайте `modsyncmanager-pack.json` рядом с инстансом
-   (полная схема — в `samples/modsyncmanager-pack.full.json`).
-3. Откройте ModsyncManager → Pack → укажите конфиг → **Pack**.
+1. Prepare an MO2 instance with mods, plugins, and extras.
+2. Open ModsyncManager → Pack.
+3. Click:
+   - **Load config…** — if you already have a
+     `modsyncmanager-pack.json` (the file is loaded into the form
+     for editing).
+   - **Create config…** — if you don't have a config yet
+     (empty form).
+4. Fill in the form:
+   - Meta (Name, Version, Author, Game, GameVersion).
+   - MO2 profile (picked from the instance's real profiles).
+   - Extensions / Extras (optional).
+   - Archive sources for non-nexus archives (URL + hash) or Skip.
+5. Click **Pack** inside the form.
 
-Результат: `__ModsyncManager_Output/modlist.json` — манифест
-сборки.
+Result: `__ModsyncManager_Output/modlist.json` — the pack manifest.
+The config is saved to `<instancePath>/modsyncmanager-pack.json`
+(or to the file it was loaded from).
 
-### Установка сборки (installer)
+Full schema — in `samples/modsyncmanager-pack.full.json`.
 
-1. Откройте ModsyncManager → Install.
-2. Укажите путь к `modlist.json`.
-3. (Опционально) укажите target-папку. По умолчанию —
+### Installing a pack (installer)
+
+1. Open ModsyncManager → Install.
+2. Select the path to `modlist.json`.
+3. (Optional) Select a target folder. Default:
    `<exeDir>/Instances/<meta.name>/`.
 4. **Install**.
 
-### Проверка инстанса (verify)
+### Verifying an instance (verify)
 
-ModsyncManager → Verify → укажите папку инстанса. ModsyncManager
-сверит инстанс с манифестом и покажет расхождения.
+ModsyncManager → Verify → select the instance folder.
+ModsyncManager compares the instance against the manifest and
+reports discrepancies.
 
-## Скриншоты
+## Screenshots
 
-_Скоро._
+_Coming soon._
 
-## Документация
+## Documentation
 
-- **[DOC.md](DOC.md)** — форматы данных, pipeline, обработка
-  ошибок. Справочник.
-- **[DEEPSEEK.md](DEEPSEEK.md)** — состояние проекта, ключевые
-  решения, грабли. Внутренние заметки.
+- **[DOC.md](DOC.md)** — data formats, pipeline, error handling.
+  Reference.
+- **[DEEPSEEK.md](DEEPSEEK.md)** — project state, key decisions,
+  pitfalls. Internal notes.
 
-## Участие
+## Contributing
 
-Мы рады вкладу. Перед открытием pull request:
+Contributions are welcome. Before opening a pull request:
 
-1. Прочитайте [CONTRIBUTING.md](CONTRIBUTING.md) — инструкции по
-   сборке, стиль кода, правила PR.
-2. Прочитайте [CLA.md](CLA.md) — Contributor License Agreement.
-   Отправляя pull request, вы соглашаетесь с его условиями.
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md) — build instructions,
+   code style, and PR guidelines.
+2. Read [CLA.md](CLA.md) — Contributor License Agreement.
+   By submitting a pull request, you agree to its terms.
 
-Нашли баг? [Откройте issue](../../issues).
-Есть идея? [Начните обсуждение](../../discussions).
+Found a bug? [Open an issue](../../issues).
+Have an idea? [Start a discussion](../../discussions).
+ 
+## License
 
-## Лицензия
-
-ModsyncManager распространяется под **GNU General Public License
-v3.0** (GPL-3.0.0). Полный текст — в [LICENSE](LICENSE).
+ModsyncManager is licensed under the **GNU General Public License
+v3.0** (GPL-3.0.0). See [LICENSE](LICENSE) for the full text.
 
 Copyright (C) 2026 UnholySaviorOmen.
 
-### Манифесты (modlist.json)
+### Manifests (modlist.json)
 
-Манифесты, созданные с помощью ModsyncManager, **не** покрываются
-GPL-3.0.0. Это файлы данных, произведённые инструментом, а не
-код, производный от него. Автор манифеста вправе лицензировать
-его на любых условиях — включая коммерческие — или не
-лицензировать вообще.
+Manifests created with ModsyncManager are **not** covered by
+GPL-3.0.0. They are data files produced by the tool, not code
+derived from it. The author of each manifest is free to license it
+under any terms — including commercial — or to keep it unlicensed.
 
-ModsyncManager не даёт вам прав на:
+ModsyncManager does not grant you rights to:
 
-- Файлы модов. Они остаются под лицензиями их авторов.
-- Сторонние платформы (Nexus Mods, GitHub и т. д.).
-- Права авторов модов.
+- Mod files. They remain under their respective authors' licenses.
+- Third-party platforms (Nexus Mods, GitHub, etc.).
+- Mod authors' rights.
 
-Ответственность за соблюдение этих условий лежит на авторе
-манифеста, а не на ModsyncManager.
+Responsibility for compliance with these terms lies with the
+manifest author, not with ModsyncManager.
 
-Это отличается от [Wabbajack](https://www.wabbajack.org/), где
-modlist'ы лицензируются под CC BY-NC-SA 4.0 (некоммерческая).
-Обе политики — законный выбор автора инструмента. ModsyncManager
-выбирает нейтралитет.
+This is different from [Wabbajack](https://www.wabbajack.org/),
+which licenses its modlists under CC BY-NC-SA 4.0 (non-commercial).
+Both are legitimate choices for tool authors. ModsyncManager
+chooses neutrality.
 
-- **[PAYWALL.md](PAYWALL.md)** — политика в отношении
-  paywall-модов и `modlist.json`.
+- **[PAYWALL.en.md](PAYWALL.en.md)** — policy on paywall mods and
+  `modlist.json`.
 
-### Сторонние компоненты
+### Third-party components
 
-ModsyncManager включает и использует сторонние компоненты.
-Полный список лицензий — в
-[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+ModsyncManager bundles and depends on third-party components. See
+[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the full list
+of licenses.

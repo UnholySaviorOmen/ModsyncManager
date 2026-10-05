@@ -31,9 +31,9 @@
     <File Path="DOC.md" />
     <File Path="PAYWALL.en.md" />
     <File Path="PAYWALL.md" />
-    <File Path="README.en.md" />
 	<File Path="README.md" />
 	<File Path="LICENSE" />
+    <File Path="README.ru.md" />
 	<File Path="THIRD-PARTY-NOTICES.md" />
   </Folder>
   <Folder Name="/Элементы решения/.github/">
