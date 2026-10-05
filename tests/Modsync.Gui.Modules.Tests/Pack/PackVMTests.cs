@@ -47,13 +47,13 @@ public class PackVMTests : IDisposable
         var patchDialog = new FakePatchDialogService();
 
         var services = new ServiceCollection();
-        services.AddSingleton(new Modsync.Pack.PackConfigBuilder(
+        services.AddSingleton(new PackConfigBuilder(
             new Modsync.Core.Archives.FileHashCache(),
-            NullLogger<Modsync.Pack.PackConfigBuilder>.Instance));
-        services.AddTransient<CreatePackConfigVM>(sp => new CreatePackConfigVM(
-            sp.GetRequiredService<Modsync.Pack.PackConfigBuilder>(),
+            NullLogger<PackConfigBuilder>.Instance));
+        services.AddTransient<PackConfigVM>(sp => new PackConfigVM(
+            sp.GetRequiredService<PackConfigBuilder>(),
             picker,
-            NullLogger<CreatePackConfigVM>.Instance));
+            NullLogger<PackConfigVM>.Instance));
         services.AddSingleton<IPatchDialogService>(patchDialog);
 
         var sp = services.BuildServiceProvider();
@@ -65,11 +65,45 @@ public class PackVMTests : IDisposable
         return (vm, runner, picker, patchDialog, sp);
     }
 
-    private string MakeTempJson()
+    private string WriteValidConfig()
     {
-        var tmp = Path.Combine(_tempDir, Guid.NewGuid() + ".json");
-        File.WriteAllText(tmp, "{}");
-        return tmp;
+        var path = Path.Combine(_tempDir, Guid.NewGuid() + ".json");
+
+        var config = new Modsync.Core.Models.Pack.PackConfig
+        {
+            Meta = new Modsync.Core.Models.Pack.PackMeta
+            {
+                Name = "Test",
+                Version = "1.0.0",
+                Author = "tester",
+                Game = "skyrimspecialedition",
+                GameVersion = "1.6.1170",
+            },
+            Instance = new Modsync.Core.Models.Pack.PackInstance { Path = "." },
+            Mo2 = new Modsync.Core.Models.Pack.PackMo2
+            {
+                Version = "2.5.2",
+                Profile = "Default",
+                Archive = "Mod.Organizer-2.5.2.7z",
+                Source = new Modsync.Core.Models.Manifest.Sources.MirrorSourceRef
+                {
+                    Url = "https://example.com/Mod.Organizer-2.5.2.7z",
+                    Hash = new Modsync.Core.Models.Hashing.XxHash64Value(1),
+                },
+                Extensions = Array.Empty<string>(),
+            },
+            StockGame = new Modsync.Core.Models.Pack.PackStockGame
+            {
+                Extras = Array.Empty<string>(),
+            },
+            ArchiveSources = Array.Empty<Modsync.Core.Models.Pack.PackArchiveSource>(),
+        };
+
+        File.WriteAllText(
+            path,
+            Modsync.Core.Models.Pack.PackConfigJson.Serialize(config));
+
+        return path;
     }
 
     // ------------------------------------------------------------------
@@ -89,170 +123,113 @@ public class PackVMTests : IDisposable
         vm.Summary.Should().BeNull();
         vm.ErrorMessage.Should().BeNull();
         vm.IsCreatingConfig.Should().BeFalse();
-        vm.CreateConfigVM.Should().BeNull();
-    }
-
-    [Fact]
-    public void PackCommand_NoConfig_CannotExecute()
-    {
-        var (vm, _, _, _, _) = Make();
-
-        vm.PackCommand.CanExecute(null).Should().BeFalse();
-    }
-
-    [Fact]
-    public void PackCommand_ValidConfig_CanExecute()
-    {
-        var (vm, _, _, _, _) = Make();
-        vm.ConfigPicker.SetPath(MakeTempJson());
-
-        vm.PackCommand.CanExecute(null).Should().BeTrue();
+        vm.ConfigVM.Should().BeNull();
     }
 
     // ------------------------------------------------------------------
-    //  Pack
+    //  Load config — открывает форму с config
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task PackAsync_Success_TransitionsToSuccess()
+    public async Task LoadConfig_OpensFormWithLoadedConfig()
     {
-        var (vm, runner, _, _, _) = Make();
-        runner.ResultToReturn = FakePackRunner.MakeSummary(
-            modsScanned: 5, filesScanned: 100);
+        var (vm, _, picker, _, _) = Make();
+        var configPath = WriteValidConfig();
+        picker.FileToReturn = configPath;
 
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
-
-        vm.State.Should().Be(PackState.Success);
-        vm.IsSuccess.Should().BeTrue();
-        vm.Summary.Should().NotBeNull();
-        vm.Summary!.ModsScanned.Should().Be(5);
-        vm.Summary!.FilesScanned.Should().Be(100);
-    }
-
-    [Fact]
-    public async Task PackAsync_PassesConfigPathToRunner()
-    {
-        var (vm, runner, _, _, _) = Make();
-        runner.ResultToReturn = FakePackRunner.MakeSummary();
-
-        var tmp = MakeTempJson();
-        vm.ConfigPicker.SetPath(tmp);
-        await vm.PackCommand.ExecuteAsync(null);
-
-        runner.LastConfigPath.Should().Be(tmp);
-    }
-
-    [Fact]
-    public async Task PackAsync_DoesNotClearLog()
-    {
-        var (vm, runner, _, _, _) = Make();
-        runner.ResultToReturn = FakePackRunner.MakeSummary();
-
-        vm.Log.Entries.Add(new LogEntry(
-            DateTimeOffset.Now, Microsoft.Extensions.Logging.LogLevel.Information,
-            "old entry"));
-
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
-
-        vm.Log.Entries.Should().HaveCount(1);
-        vm.Log.Entries[0].Message.Should().Be("old entry");
-    }
-
-    [Fact]
-    public async Task PackAsync_RunnerThrows_TransitionsToFailure()
-    {
-        var (vm, runner, _, _, _) = Make();
-        runner.ExceptionToThrow = new InvalidOperationException("boom");
-
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
-
-        vm.State.Should().Be(PackState.Failure);
-        vm.IsFailure.Should().BeTrue();
-        vm.ErrorMessage.Should().Contain("boom");
-    }
-
-    [Fact]
-    public async Task PackAsync_Cancelled_ReturnsToConfiguration()
-    {
-        var (vm, runner, _, _, _) = Make();
-        runner.ExceptionToThrow = new OperationCanceledException();
-
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
-
-        vm.State.Should().Be(PackState.Configuration);
-        vm.ErrorMessage.Should().Be("Cancelled.");
-    }
-
-    // ------------------------------------------------------------------
-    //  Create Config — open / close
-    // ------------------------------------------------------------------
-
-    [Fact]
-    public void OpenCreateConfig_CreatesVM_AndHidesConfiguration()
-    {
-        var (vm, _, _, _, _) = Make();
-
-        vm.OpenCreateConfigCommand.Execute(null);
+        await vm.LoadConfigCommand.ExecuteAsync(null);
 
         vm.IsCreatingConfig.Should().BeTrue();
         vm.IsConfiguring.Should().BeFalse();
-        vm.CreateConfigVM.Should().NotBeNull();
+        vm.ConfigVM.Should().NotBeNull();
+        vm.ConfigVM!.LoadedFromPath.Should().Be(configPath);
     }
 
     [Fact]
-    public void OpenCreateConfig_Twice_KeepsSameInstance()
+    public async Task LoadConfig_PickerCancelled_NoFormOpened()
+    {
+        var (vm, _, picker, _, _) = Make();
+        picker.FileToReturn = null;
+
+        await vm.LoadConfigCommand.ExecuteAsync(null);
+
+        vm.IsCreatingConfig.Should().BeFalse();
+        vm.ConfigVM.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LoadConfig_WhileFormOpen_NoOp()
+    {
+        var (vm, _, picker, _, _) = Make();
+        var configPath = WriteValidConfig();
+        picker.FileToReturn = configPath;
+
+        await vm.LoadConfigCommand.ExecuteAsync(null);
+        var first = vm.ConfigVM;
+
+        await vm.LoadConfigCommand.ExecuteAsync(null);
+
+        vm.ConfigVM.Should().BeSameAs(first);
+    }
+
+    // ------------------------------------------------------------------
+    //  Create config — открывает пустую форму
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void CreateConfig_OpensEmptyForm()
     {
         var (vm, _, _, _, _) = Make();
 
-        vm.OpenCreateConfigCommand.Execute(null);
-        var first = vm.CreateConfigVM;
+        vm.CreateConfigCommand.Execute(null);
 
-        vm.OpenCreateConfigCommand.Execute(null);
-        var second = vm.CreateConfigVM;
+        vm.IsCreatingConfig.Should().BeTrue();
+        vm.IsConfiguring.Should().BeFalse();
+        vm.ConfigVM.Should().NotBeNull();
+        vm.ConfigVM!.LoadedFromPath.Should().BeNull();
+    }
+
+    [Fact]
+    public void CreateConfig_WhileFormOpen_KeepsSameInstance()
+    {
+        var (vm, _, _, _, _) = Make();
+
+        vm.CreateConfigCommand.Execute(null);
+        var first = vm.ConfigVM;
+
+        vm.CreateConfigCommand.Execute(null);
+        var second = vm.ConfigVM;
 
         second.Should().BeSameAs(first);
     }
 
+    // ------------------------------------------------------------------
+    //  Cancel — закрывает форму
+    // ------------------------------------------------------------------
+
     [Fact]
-    public void CreateConfigCancel_ClosesForm()
+    public void CancelForm_ClosesForm_ReturnsToConfiguration()
     {
         var (vm, _, _, _, _) = Make();
-        vm.OpenCreateConfigCommand.Execute(null);
+        vm.CreateConfigCommand.Execute(null);
 
-        vm.CreateConfigVM!.CancelCommand.Execute(null);
+        vm.ConfigVM!.CancelCommand.Execute(null);
 
         vm.IsCreatingConfig.Should().BeFalse();
         vm.IsConfiguring.Should().BeTrue();
-        vm.CreateConfigVM.Should().BeNull();
-    }
-
-    [Fact]
-    public void PackCommand_WhileCreateConfigOpen_CannotExecute()
-    {
-        var (vm, _, _, _, _) = Make();
-        vm.ConfigPicker.SetPath(MakeTempJson());
-
-        vm.OpenCreateConfigCommand.Execute(null);
-
-        vm.PackCommand.CanExecute(null).Should().BeFalse();
+        vm.ConfigVM.Should().BeNull();
     }
 
     // ------------------------------------------------------------------
-    //  Create Config — completed → runs packer
+    //  Form completed → runs packer
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task CreateConfigCompleted_ClosesForm_AndRunsPacker()
+    public async Task FormCompleted_ClosesForm_AndRunsPacker()
     {
         var (vm, runner, _, _, _) = Make();
         runner.ResultToReturn = FakePackRunner.MakeSummary();
-
-        vm.OpenCreateConfigCommand.Execute(null);
-        var configVM = vm.CreateConfigVM!;
+        vm.CreateConfigCommand.Execute(null);
 
         var input = new PackConfigBuilderInput
         {
@@ -260,7 +237,7 @@ public class PackVMTests : IDisposable
             Meta = new Modsync.Core.Models.Pack.PackMeta
             {
                 Name = "Test",
-                Version = "0.1.0",
+                Version = "1.0.0",
                 Author = "tester",
                 Game = "skyrimspecialedition",
                 GameVersion = "1.6.1170",
@@ -271,25 +248,68 @@ public class PackVMTests : IDisposable
             ArchiveSources = Array.Empty<Modsync.Core.Models.Pack.PackArchiveSource>(),
         };
 
-        var field = typeof(CreatePackConfigVM)
+        // Trigger через рефлексию: ConfigCreated — private event.
+        var field = typeof(PackConfigVM)
             .GetField("ConfigCreated",
                 System.Reflection.BindingFlags.Instance |
                 System.Reflection.BindingFlags.NonPublic);
 
-        var handler = (Action<PackConfigBuilderInput>?)field?.GetValue(configVM);
+        var handler = (Action<PackConfigBuilderInput>?)field?.GetValue(vm.ConfigVM!);
         handler?.Invoke(input);
 
-        // Fire-and-forget — ждём.
         await Task.Delay(200);
 
         vm.IsCreatingConfig.Should().BeFalse();
-        vm.CreateConfigVM.Should().BeNull();
+        vm.ConfigVM.Should().BeNull();
         runner.LastConfigBuilderInput.Should().NotBeNull();
         runner.LastConfigBuilderInput!.InstancePath.Should().Be(_tempDir);
     }
 
     // ------------------------------------------------------------------
-    //  Cancel
+    //  Pack — success / failure / cancel
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task PackFromForm_Success_TransitionsToSuccess()
+    {
+        var (vm, runner, _, _, _) = Make();
+        runner.ResultToReturn = FakePackRunner.MakeSummary(
+            modsScanned: 5, filesScanned: 100);
+
+        await RunFormAndWaitAsync(vm);
+
+        vm.State.Should().Be(PackState.Success);
+        vm.IsSuccess.Should().BeTrue();
+        vm.Summary.Should().NotBeNull();
+        vm.Summary!.ModsScanned.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task PackFromForm_RunnerThrows_TransitionsToFailure()
+    {
+        var (vm, runner, _, _, _) = Make();
+        runner.ExceptionToThrow = new InvalidOperationException("boom");
+
+        await RunFormAndWaitAsync(vm);
+
+        vm.State.Should().Be(PackState.Failure);
+        vm.ErrorMessage.Should().Contain("boom");
+    }
+
+    [Fact]
+    public async Task PackFromForm_Cancelled_ReturnsToConfiguration()
+    {
+        var (vm, runner, _, _, _) = Make();
+        runner.ExceptionToThrow = new OperationCanceledException();
+
+        await RunFormAndWaitAsync(vm);
+
+        vm.State.Should().Be(PackState.Configuration);
+        vm.ErrorMessage.Should().Be("Cancelled.");
+    }
+
+    // ------------------------------------------------------------------
+    //  Cancel running pack
     // ------------------------------------------------------------------
 
     [Fact]
@@ -298,17 +318,17 @@ public class PackVMTests : IDisposable
         var (vm, runner, _, _, _) = Make();
         runner.Gate = new TaskCompletionSource();
 
-        vm.ConfigPicker.SetPath(MakeTempJson());
+        vm.CreateConfigCommand.Execute(null);
+        InvokeConfigCreated(vm, MakeInput());
 
-        var packTask = vm.PackCommand.ExecuteAsync(null);
+        // Ждём, пока State станет Packing.
+        await WaitUntilAsync(() => vm.State == PackState.Packing);
 
-        vm.State.Should().Be(PackState.Packing);
         vm.CancelCommand.CanExecute(null).Should().BeTrue();
-
         vm.CancelCommand.Execute(null);
-        await packTask;
 
-        vm.State.Should().Be(PackState.Configuration);
+        await WaitUntilAsync(() => vm.State == PackState.Configuration);
+
         vm.ErrorMessage.Should().Be("Cancelled.");
     }
 
@@ -329,11 +349,8 @@ public class PackVMTests : IDisposable
         var (vm, runner, _, _, _) = Make();
         runner.ResultToReturn = FakePackRunner.MakeSummary();
 
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
-
+        await RunFormAndWaitAsync(vm);
         vm.State.Should().Be(PackState.Success);
-        vm.Summary.Should().NotBeNull();
 
         vm.DoneCommand.Execute(null);
 
@@ -343,41 +360,18 @@ public class PackVMTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    //  Visibility
+    //  Patch dialog
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task State_TransitionsUpdateVisibilityFlags()
-    {
-        var (vm, runner, _, _, _) = Make();
-        runner.ResultToReturn = FakePackRunner.MakeSummary();
-
-        vm.IsConfiguring.Should().BeTrue();
-        vm.IsPacking.Should().BeFalse();
-
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
-
-        vm.IsConfiguring.Should().BeFalse();
-        vm.IsPacking.Should().BeFalse();
-        vm.IsSuccess.Should().BeTrue();
-        vm.IsFailure.Should().BeFalse();
-    }
-
-    // ------------------------------------------------------------------
-    //  Patch dialog — через IPatchDialogService
-    // ------------------------------------------------------------------
-
-    [Fact]
-    public async Task PackAsync_WithUnmatched_CallsPatchDialogService()
+    public async Task PackFromForm_WithUnmatched_CallsPatchDialogService()
     {
         var (vm, runner, _, patchDialog, _) = Make();
         runner.ResultToReturn = FakePackRunner.MakeSummary(
             unmatchedFiles: 5,
             instancePath: "/custom/instance");
 
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
+        await RunFormAndWaitAsync(vm);
 
         patchDialog.CallCount.Should().Be(1);
         patchDialog.LastUnmatchedCount.Should().Be(5);
@@ -385,38 +379,99 @@ public class PackVMTests : IDisposable
     }
 
     [Fact]
-    public async Task PackAsync_NoUnmatched_DoesNotCallDialog()
+    public async Task PackFromForm_NoUnmatched_DoesNotCallDialog()
     {
         var (vm, runner, _, patchDialog, _) = Make();
         runner.ResultToReturn = FakePackRunner.MakeSummary(unmatchedFiles: 0);
 
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
+        await RunFormAndWaitAsync(vm);
 
         patchDialog.CallCount.Should().Be(0);
     }
 
     [Fact]
-    public async Task PackAsync_Failure_DoesNotCallDialog()
+    public async Task PackFromForm_Failure_DoesNotCallDialog()
     {
         var (vm, runner, _, patchDialog, _) = Make();
         runner.ExceptionToThrow = new InvalidOperationException("boom");
 
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
+        await RunFormAndWaitAsync(vm);
 
         patchDialog.CallCount.Should().Be(0);
     }
 
     [Fact]
-    public async Task PackAsync_Cancelled_DoesNotCallDialog()
+    public async Task PackFromForm_Cancelled_DoesNotCallDialog()
     {
         var (vm, runner, _, patchDialog, _) = Make();
         runner.ExceptionToThrow = new OperationCanceledException();
 
-        vm.ConfigPicker.SetPath(MakeTempJson());
-        await vm.PackCommand.ExecuteAsync(null);
+        await RunFormAndWaitAsync(vm);
 
         patchDialog.CallCount.Should().Be(0);
+    }
+
+    // ------------------------------------------------------------------
+    //  Helpers
+    // ------------------------------------------------------------------
+
+    private static PackConfigBuilderInput MakeInput(string instancePath = "/test/instance")
+        => new()
+        {
+            InstancePath = instancePath,
+            Meta = new Modsync.Core.Models.Pack.PackMeta
+            {
+                Name = "Test",
+                Version = "1.0.0",
+                Author = "tester",
+                Game = "skyrimspecialedition",
+                GameVersion = "1.6.1170",
+            },
+            Profile = "Default",
+            Extensions = Array.Empty<string>(),
+            Extras = Array.Empty<string>(),
+            ArchiveSources = Array.Empty<Modsync.Core.Models.Pack.PackArchiveSource>(),
+        };
+
+    private static void InvokeConfigCreated(PackVM vm, PackConfigBuilderInput input)
+    {
+        var field = typeof(PackConfigVM)
+            .GetField("ConfigCreated",
+                System.Reflection.BindingFlags.Instance |
+                System.Reflection.BindingFlags.NonPublic);
+
+        var handler = (Action<PackConfigBuilderInput>?)field?.GetValue(vm.ConfigVM!);
+        handler?.Invoke(input);
+    }
+
+    /// <summary>
+    /// Открывает форму, шлёт ConfigCreated с дефолтным input и ждёт
+    /// завершения packer-а (или перехода в Success/Failure/Configuration).
+    /// </summary>
+    private static async Task RunFormAndWaitAsync(PackVM vm)
+    {
+        vm.CreateConfigCommand.Execute(null);
+        InvokeConfigCreated(vm, MakeInput());
+
+        await WaitUntilAsync(() =>
+            vm.State == PackState.Success ||
+            vm.State == PackState.Failure ||
+            vm.State == PackState.Configuration);
+
+        // Даём MaybeShowPatchDialogAsync завершиться.
+        await Task.Delay(150);
+    }
+
+    private static async Task WaitUntilAsync(
+        Func<bool> predicate, int timeoutMs = 5000)
+    {
+        var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        while (DateTime.UtcNow < deadline)
+        {
+            if (predicate()) return;
+            await Task.Delay(20);
+        }
+
+        throw new TimeoutException("Condition not met within timeout.");
     }
 }

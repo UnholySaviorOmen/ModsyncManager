@@ -5,9 +5,9 @@ using Avalonia.Controls;
 
 namespace Modsync.Gui.Modules.Pack.Views;
 
-public partial class CreatePackConfigView : UserControl
+public partial class PackConfigView : UserControl
 {
-    public CreatePackConfigView()
+    public PackConfigView()
     {
         InitializeComponent();
     }

@@ -11,7 +11,7 @@ using Modsync.Pack.Models;
 namespace Modsync.Gui.Modules.Pack.ViewModels;
 
 /// <summary>
-/// Строка non-nexus архива в форме Create Pack Config.
+/// Строка non-nexus архива в форме Pack Config.
 ///
 /// Показывает имя архива, размер и хеш (read-only), а также даёт
 /// пользователю ввести один или несколько источников (url + hash).
@@ -53,15 +53,14 @@ public sealed partial class UnresolvedArchiveRowVM : ObservableObject
         if (IsExcluded) return;
 
         var source = new ArchiveSourceRowVM(
-            onRemove: RemoveSourceInternal,
+            onRemove: RemoveSource,
             canRemove: () => Sources.Count > 1)
         {
             Url = "",
             Hash = HashText,
         };
 
-        source.ValidationChanged += (_, _) =>
-            ValidationChanged?.Invoke(this, EventArgs.Empty);
+        source.ValidationChanged += OnSourceValidationChanged;
 
         Sources.Add(source);
         NotifyRemoveCommands();
@@ -95,29 +94,64 @@ public sealed partial class UnresolvedArchiveRowVM : ObservableObject
         ? "Skipped — will not be added to archiveSources"
         : "";
 
+    // ------------------------------------------------------------------
+    //  Источники
+    // ------------------------------------------------------------------
+
     private void AddInitialSource(string hash)
     {
         var source = new ArchiveSourceRowVM(
-            onRemove: RemoveSourceInternal,
+            onRemove: RemoveSource,
             canRemove: () => Sources.Count > 1)
         {
             Url = "",
             Hash = hash,
         };
 
-        source.ValidationChanged += (_, _) =>
-            ValidationChanged?.Invoke(this, EventArgs.Empty);
+        source.ValidationChanged += OnSourceValidationChanged;
 
         Sources.Add(source);
     }
 
-    private void RemoveSourceInternal(ArchiveSourceRowVM source)
+    /// <summary>
+    /// Добавить пустой source. Используется при загрузке config,
+    /// если все sources оказались не-mirror (например, nexus),
+    /// чтобы пользователь видел строку и мог её заполнить.
+    /// </summary>
+    internal void AddEmptySource()
+    {
+        var source = new ArchiveSourceRowVM(
+            onRemove: RemoveSource,
+            canRemove: () => Sources.Count > 1)
+        {
+            Url = "",
+            Hash = HashText,
+        };
+
+        source.ValidationChanged += OnSourceValidationChanged;
+
+        Sources.Add(source);
+        NotifyRemoveCommands();
+    }
+
+    /// <summary>
+    /// Удалить source. Вызывается из ArchiveSourceRowVM.
+    /// Если остался один — не удаляем (минимум один обязателен).
+    /// </summary>
+    internal void RemoveSource(ArchiveSourceRowVM source)
     {
         if (Sources.Count <= 1) return;
         if (!Sources.Contains(source)) return;
 
+        source.ValidationChanged -= OnSourceValidationChanged;
+
         Sources.Remove(source);
         NotifyRemoveCommands();
+        ValidationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnSourceValidationChanged(object? sender, EventArgs e)
+    {
         ValidationChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -126,6 +160,10 @@ public sealed partial class UnresolvedArchiveRowVM : ObservableObject
         foreach (var s in Sources)
             s.NotifyCanRemoveChanged();
     }
+
+    // ------------------------------------------------------------------
+    //  Валидация
+    // ------------------------------------------------------------------
 
     /// <summary>
     /// Архив валиден, если он исключён (ничего проверять не надо)
@@ -150,6 +188,58 @@ public sealed partial class UnresolvedArchiveRowVM : ObservableObject
             Sources = sourceRefs,
         };
     }
+
+    // ------------------------------------------------------------------
+    //  Load from config
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// Заполнить Sources этого архива из config.
+    ///
+    /// Заменяет текущие Sources на список из config.
+    /// Используется при LoadConfigAsync.
+    ///
+    /// Не-mirror sources (nexus) игнорируются: форма умеет
+    /// редактировать только mirror. Если после фильтрации
+    /// не осталось ни одного — добавляется пустой source,
+    /// чтобы пользователь увидел строку и заполнил её вручную.
+    /// </summary>
+    public void LoadSources(PackArchiveSource source)
+    {
+        // Отписываемся от старых.
+        foreach (var s in Sources)
+            s.ValidationChanged -= OnSourceValidationChanged;
+
+        Sources.Clear();
+
+        foreach (var srcRef in source.Sources)
+        {
+            if (srcRef is not MirrorSourceRef mirror)
+                continue;
+
+            var row = new ArchiveSourceRowVM(
+                onRemove: RemoveSource,
+                canRemove: () => Sources.Count > 1)
+            {
+                Url = mirror.Url,
+                Hash = mirror.Hash.ToString(),
+            };
+
+            row.ValidationChanged += OnSourceValidationChanged;
+
+            Sources.Add(row);
+        }
+
+        if (Sources.Count == 0)
+            AddEmptySource();
+
+        NotifyRemoveCommands();
+        ValidationChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    // ------------------------------------------------------------------
+    //  Helpers
+    // ------------------------------------------------------------------
 
     private static string FormatSize(long bytes)
     {

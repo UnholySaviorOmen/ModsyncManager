@@ -46,27 +46,41 @@
                     Spacing="16"
                     IsVisible="{Binding IsConfiguring}"
                     VerticalAlignment="Top">
-            <controls:FilePickerView DataContext="{Binding ConfigPicker}" />
 
-            <Button Content="Or create config from scratch…"
-                    Command="{Binding OpenCreateConfigCommand}"
+            <TextBlock Text="Start a pack"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,4" />
+
+            <Button Content="Load config…"
+                    Command="{Binding LoadConfigCommand}"
                     HorizontalAlignment="Left"
-                    Padding="16,8" />
+                    Padding="20,8" />
+            <TextBlock Text="Open an existing modsyncmanager-pack.json to edit and pack."
+                       Foreground="{StaticResource TextMutedBrush}"
+                       FontSize="11"
+                       Margin="0,-8,0,0" />
+
+            <Button Content="Create config…"
+                    Command="{Binding CreateConfigCommand}"
+                    HorizontalAlignment="Left"
+                    Padding="20,8"
+                    Margin="0,8,0,0" />
+            <TextBlock Text="Start from scratch. Recommended if you've never packed this instance before."
+                       Foreground="{StaticResource TextMutedBrush}"
+                       FontSize="11"
+                       Margin="0,-8,0,0" />
 
             <TextBlock Text="{Binding ErrorMessage}"
                        Foreground="{StaticResource WarningBrush}"
                        FontSize="12"
+                       TextWrapping="Wrap"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
-
-            <Button Content="Pack"
-                    Command="{Binding PackCommand}"
-                    HorizontalAlignment="Left"
-                    Padding="20,8" />
         </StackPanel>
-
-        <!-- Create Config (embedded, replaces Configuration) -->
+        
+        <!-- Config form (embedded, replaces Configuration) -->
         <ContentControl Grid.Row="1"
-                        Content="{Binding CreateConfigVM}"
+                        Content="{Binding ConfigVM}"
                         IsVisible="{Binding IsCreatingConfig}"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch" />

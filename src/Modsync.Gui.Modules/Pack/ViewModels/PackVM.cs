@@ -9,7 +9,6 @@ using Modsync.Gui.Modules.Pack.Services;
 using Modsync.Gui.Shared.Services;
 using Modsync.Gui.Shared.State;
 using Modsync.Gui.Shared.ViewModels;
-using Modsync.Gui.Shared.ViewModels.Controls;
 using Modsync.Pack;
 using Modsync.Pack.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,12 +16,33 @@ using Microsoft.Extensions.Logging;
 
 namespace Modsync.Gui.Modules.Pack.ViewModels;
 
+/// <summary>
+/// VM экрана Pack.
+///
+/// Один путь: пользователь нажимает «Load config…» (выбирает
+/// существующий modsyncmanager-pack.json) или «Create config…»
+/// (открывает пустую форму). Обе кнопки открывают embedded-форму
+/// PackConfigVM.
+///
+/// Форма либо загружает config из файла, либо пустая. При нажатии
+/// Pack внутри формы сохраняет config на диск и поднимает
+/// ConfigCreated(input). PackVM ловит событие, запускает pipeline
+/// через IPackRunner.RunFromConfigBuilderAsync.
+///
+/// После успешного pack, если PackSummary.UnmatchedFiles > 0,
+/// показывается модальный диалог через IPatchDialogService.
+/// </summary>
 public sealed partial class PackVM : ProgressViewModel
 {
     private readonly IPackRunner _runner;
     private readonly IServiceProvider _sp;
+    private readonly IFilePickerService _picker;
     private readonly ILogger<PackVM> _logger;
     private CancellationTokenSource? _cts;
+
+    // ------------------------------------------------------------------
+    //  ObservableProperty-поля
+    // ------------------------------------------------------------------
 
     [ObservableProperty]
     private PackState _state = PackState.Configuration;
@@ -45,13 +65,19 @@ public sealed partial class PackVM : ProgressViewModel
     [ObservableProperty]
     private string? _errorMessage;
 
+    // ------------------------------------------------------------------
+    //  Config form (embedded)
+    //  Имя свойства — ConfigVM (тип PackConfigVM).
+    //  Имя класса и свойства не должны совпадать (CS0542), поэтому
+    //  свойство называется ConfigVM, а не PackConfigVM.
+    // ------------------------------------------------------------------
+
     [ObservableProperty]
-    private CreatePackConfigVM? _createConfigVM;
+    private PackConfigVM? _configVM;
 
     [ObservableProperty]
     private bool _isCreatingConfig;
 
-    public FilePickerVM ConfigPicker { get; }
     public LogVM Log { get; }
 
     public PackVM(
@@ -63,66 +89,70 @@ public sealed partial class PackVM : ProgressViewModel
     {
         _runner = runner;
         _sp = sp;
+        _picker = picker;
         _logger = logger;
         Log = log;
-
-        ConfigPicker = new FilePickerVM(picker)
-        {
-            Placeholder = "Select modsyncmanager-pack.json",
-            FilterHint = ".json",
-            MustExist = true,
-            Folder = false,
-        };
-        ConfigPicker.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName == nameof(FilePickerVM.IsValid))
-                PackCommand.NotifyCanExecuteChanged();
-        };
     }
 
     public void SetNavigateHome(Action navigateHome) { }
 
     // ------------------------------------------------------------------
-    //  Pack (обычный путь)
+    //  Load config… (из файла)
     // ------------------------------------------------------------------
 
-    [RelayCommand(CanExecute = nameof(CanPack))]
-    private async Task PackAsync()
-    {
-        var configPath = ConfigPicker.Path!;
-
-        await ExecutePackAsync((progress, ct) =>
-            _runner.RunAsync(configPath, progress, ct));
-
-        await MaybeShowPatchDialogAsync();
-    }
-
-    private bool CanPack()
-        => State == PackState.Configuration
-           && !IsCreatingConfig
-           && ConfigPicker.IsValid;
-
-    // ------------------------------------------------------------------
-    //  Create Pack Config
-    // ------------------------------------------------------------------
-
+    /// <summary>
+    /// Открывает file picker на modsyncmanager-pack.json, резолвит
+    /// путь, создаёт PackConfigVM и вызывает LoadConfigAsync(path).
+    /// </summary>
     [RelayCommand]
-    private void OpenCreateConfig()
+    private async Task LoadConfigAsync()
     {
         if (IsCreatingConfig)
             return;
 
-        var vm = _sp.GetRequiredService<CreatePackConfigVM>();
-        vm.ConfigCreated += OnConfigCreated;
-        vm.Cancelled += OnCreateConfigCancelled;
+        var picked = await _picker.PickFileAsync(
+            "Select modsyncmanager-pack.json", ".json");
 
-        CreateConfigVM = vm;
+        if (string.IsNullOrWhiteSpace(picked))
+            return;
+
+        var vm = _sp.GetRequiredService<PackConfigVM>();
+        vm.ConfigCreated += OnConfigCreated;
+        vm.Cancelled += OnConfigCancelled;
+
+        ConfigVM = vm;
+        IsCreatingConfig = true;
+
+        // Загружаем config в форму. Ошибки парсинга — ErrorMessage
+        // внутри PackConfigVM, форма остаётся открытой.
+        await vm.LoadConfigAsync(picked);
+    }
+
+    // ------------------------------------------------------------------
+    //  Create config… (пустая форма)
+    // ------------------------------------------------------------------
+
+    [RelayCommand]
+    private void CreateConfig()
+    {
+        if (IsCreatingConfig)
+            return;
+
+        var vm = _sp.GetRequiredService<PackConfigVM>();
+        vm.ConfigCreated += OnConfigCreated;
+        vm.Cancelled += OnConfigCancelled;
+
+        ConfigVM = vm;
         IsCreatingConfig = true;
     }
 
+    // ------------------------------------------------------------------
+    //  Config form — завершение
+    // ------------------------------------------------------------------
+
     private void OnConfigCreated(PackConfigBuilderInput input)
     {
-        CloseCreateConfig();
+        CloseConfig();
         _ = ExecuteAndMaybeShowPatchAsync(input);
     }
 
@@ -134,20 +164,20 @@ public sealed partial class PackVM : ProgressViewModel
         await MaybeShowPatchDialogAsync();
     }
 
-    private void OnCreateConfigCancelled()
+    private void OnConfigCancelled()
     {
-        CloseCreateConfig();
+        CloseConfig();
     }
 
-    private void CloseCreateConfig()
+    private void CloseConfig()
     {
-        if (CreateConfigVM is not null)
+        if (ConfigVM is not null)
         {
-            CreateConfigVM.ConfigCreated -= OnConfigCreated;
-            CreateConfigVM.Cancelled -= OnCreateConfigCancelled;
+            ConfigVM.ConfigCreated -= OnConfigCreated;
+            ConfigVM.Cancelled -= OnConfigCancelled;
         }
 
-        CreateConfigVM = null;
+        ConfigVM = null;
         IsCreatingConfig = false;
     }
 
@@ -167,8 +197,6 @@ public sealed partial class PackVM : ProgressViewModel
         if (unmatched <= 0)
             return;
 
-        // instancePath берём из Summary — это правильный путь,
-        // независимо от того, откуда пришёл config (файл или форма).
         var instancePath = Summary.InstancePath;
 
         try
@@ -249,14 +277,12 @@ public sealed partial class PackVM : ProgressViewModel
     partial void OnStateChanged(PackState value)
     {
         UpdateVisibility();
-        PackCommand.NotifyCanExecuteChanged();
         CancelCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnIsCreatingConfigChanged(bool value)
     {
         UpdateVisibility();
-        PackCommand.NotifyCanExecuteChanged();
     }
 
     private void UpdateVisibility()

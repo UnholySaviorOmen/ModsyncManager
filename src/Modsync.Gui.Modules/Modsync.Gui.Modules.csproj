@@ -17,4 +17,9 @@
     <ProjectReference Include="..\Modsync.Install\Modsync.Install.csproj" />
     <ProjectReference Include="..\Modsync.Pack\Modsync.Pack.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Update="Pack\Views\PackConfigView.axaml.cs">
+      <DependentUpon>PackConfigView.axaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

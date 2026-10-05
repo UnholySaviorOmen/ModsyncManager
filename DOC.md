@@ -30,6 +30,7 @@
 9. [Формат файлов MO2](#формат-файлов-mo2)
 10. [Пайплайн: создание сборки](#пайплайн-создание-сборки)
     10.1. [Pack без config](#pack-без-config)
+    10.2. [Patch-архив для unmatched файлов](#patch-архив-для-unmatched-файлов)
 11. [Пайплайн: установка сборки](#пайплайн-установка-сборки)
 12. [Пайплайн: обновление сборки](#пайплайн-обновление-сборки)
 13. [Работа с Nexus Mods](#работа-с-nexus-mods)
@@ -244,10 +245,12 @@ Slug, ArchiveId, абстракции, `SevenZipExtractor`, `TempWorkspace`,
 `Mo2ArchiveBuilder`) — построение индексов архивов и матчинг файлов
 по хешу. Один экземпляр `ArchiveMatcher` на весь pipeline.
 `PackInputFactory`, `PackSummary` + `PackSummaryBuilder`.
-**`PackConfigBuilder`** — сервис для GUI-формы «Create Pack Config»:
+**`PackConfigBuilder`** — сервис для GUI-формы «Pack Config»:
 сканирует `MO2/downloads/` на non-nexus архивы, читает профили,
 собирает `PackConfig` из пользовательского ввода + хардкода
-`mo2`-секции. DI-extension: `AddModsyncPack`.
+`mo2`-секции. **`PatchArchiveBuilder`** — сервис сборки
+patch-архива из `__ModsyncManager_Output/`. DI-extension:
+`AddModsyncPack`.
 
 **Modsync.Install:** `InstallPipeline` + 11 шагов; `MirrorDownloader`,
 `DownloaderRegistry`; `VerifyPipeline`. `InstallInputFactory`,
@@ -266,7 +269,8 @@ ModsyncManager. Если pipe недоступен — exit 3. Не старту
 `LogVM`, `LogsVM`, `CacheVM`, `SettingsVM`, `NexusSettingsVM`,
 `NexusFreeDownloadSettingsVM`, `MainWindowVM`, `NavigationVM`.
 Сервисы: `IFilePickerService`, `IUiDispatcher`,
-`IInstalledPackScanner`, `IProcessLauncher`, `ISettingsStore`.
+`IInstalledPackScanner`, `IProcessLauncher`, `ISettingsStore`,
+`IPatchDialogService`.
 Навигация: `IScreenFactory`, `IInstallRequestHandler`,
 `IInstallTarget`, `ScreenType`. Модели: `InstalledPackInfo`,
 `Settings`. Состояния: `InstallState`, `PackState`, `VerifyState`.
@@ -281,7 +285,8 @@ ModsyncManager. Если pipe недоступен — exit 3. Не старту
 `ViewLocator`, `ScreenFactory`, `AvaloniaFilePickerService`,
 `AvaloniaUiDispatcher`, `ShellProcessLauncher`, `NavigationView`,
 `HomeView`, `SettingsView`, `LogsView`, `CacheView`,
-`ScreenIconConverter`, `SingleInstanceDialog`.
+`ScreenIconConverter`, `SingleInstanceDialog`,
+`AvaloniaPatchDialogService`.
 
 ### Интерфейсы
 
@@ -889,6 +894,47 @@ Packer запускается через `PackPipeline.ExecuteAsync`. В GUI —
 | `mo2.source.hash` | `xxh64:E574E05EB6C470AD` |
 
 **`Save as template…`** — сохранение формы в `modsyncmanager-pack.json` (через `IFilePickerService.SaveFileAsync`). Если пользователь передумал сохранять — форма остаётся открытой.
+
+### 10.2. Patch-архив для unmatched файлов
+
+После pack, если в `__ModsyncManager_Output/` есть файлы (кроме
+`modlist.json`), GUI показывает **модальное окно**
+`PatchArchiveDialog` (600×400). Три кнопки: Ignore / Open output
+folder / Create patch archive.
+
+**`PatchArchiveBuilder.BuildAsync(instancePath, ct)`:**
+
+1. Проверяет `<instancePath>/__ModsyncManager_Output/`.
+2. Перечисляет все файлы, кроме `modlist.json` в корне.
+3. Создаёт `<instancePath>/MO2/downloads/ModsyncManager_Output.zip`
+   (перезапись при повторном вызове).
+4. Структура архива — 1:1 от `__ModsyncManager_Output/`.
+5. Не удаляет исходную папку.
+
+**Структура patch-архива:**
+```
+ModsyncManager_Output.zip
+├── MO2/
+│ ├── mods/<ModName>/...
+│ ├── plugins/fomod.dll
+│ └── tools/MyPatcher/...
+└── Stock Game/
+├── skse64_loader.exe
+└── enbseries/...
+```
+
+
+**Почему это работает:**
+
+Installer думает «**куда положить**», а не «**откуда взять**».
+Директивы `FromArchive` знают `Source` (путь внутри архива) и
+`Destination` (путь в моде / MO2 / Stock Game). Packer при
+следующем pack индексирует patch-архив через `ArchiveMatcher`,
+матчит файлы по хешу. Installer раскладывает их по правильным
+местам, независимо от расположения в архиве.
+
+**`instancePath` для диалога** — `PackSummary.InstancePath`
+(папка инстанса), **не** `configPath`.
 
 ### Этап 1.4. Итог
 

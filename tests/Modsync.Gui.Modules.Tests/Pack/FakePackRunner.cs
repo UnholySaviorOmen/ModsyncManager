@@ -15,31 +15,7 @@ public sealed class FakePackRunner : IPackRunner
     public TaskCompletionSource? Gate { get; set; }
     public List<StepProgress> ReportedProgress { get; } = new();
     public CancellationToken LastToken { get; private set; }
-    public string? LastConfigPath { get; private set; }
     public PackConfigBuilderInput? LastConfigBuilderInput { get; private set; }
-
-    public async Task<PackSummary> RunAsync(
-        string configPath,
-        IProgress<StepProgress> progress,
-        CancellationToken ct)
-    {
-        LastConfigPath = configPath;
-        LastToken = ct;
-
-        if (Gate is not null)
-        {
-            using var reg = ct.Register(() => Gate.TrySetCanceled(ct));
-            await Gate.Task;
-        }
-
-        if (ExceptionToThrow is not null)
-            throw ExceptionToThrow;
-
-        if (ResultToReturn is null)
-            throw new InvalidOperationException("FakePackRunner.ResultToReturn is null.");
-
-        return ResultToReturn;
-    }
 
     public async Task<PackSummary> RunFromConfigBuilderAsync(
         PackConfigBuilderInput input,

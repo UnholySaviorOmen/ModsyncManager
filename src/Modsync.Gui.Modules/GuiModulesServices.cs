@@ -21,7 +21,7 @@ public static class GuiModulesServices
         services.AddSingleton<IPackRunner, PackRunner>();
         services.AddSingleton<PackVM>();
 
-        services.AddTransient<CreatePackConfigVM>();
+        services.AddTransient<PackConfigVM>();
 
         services.AddSingleton<IVerifyRunner, VerifyRunner>();
         services.AddSingleton<VerifyVM>();

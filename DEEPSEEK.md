@@ -1,7 +1,7 @@
 # ModsyncManager — состояние проекта и план работ
 
-**Обновлено:** 2026-10-04
-**Всего тестов:** 1193, 0 failed
+**Обновлено:** 2026-10-05
+**Всего тестов:** 1244, 0 failed
 **Текущий блок:** все запланированные блоки закрыты
 **Следующий блок:** (не определён)
 
@@ -140,6 +140,25 @@ DEEPSEEK.md — только по запросу.
   прогресс `BuildArchiveMatcher`.
 - ✅ `tools/dump-repo.bat` — заголовок `# Firelink` → `# ModsyncManager`.
 - ✅ `Directory.Build.props` — снят BOM (иначе MSB4024 в .NET SDK 10).
+- ✅ **Блок 36.1** — `PatchArchiveBuilder` в `Modsync.Pack`
+  (сборка patch-архива из `__ModsyncManager_Output/`).
+- ✅ **Блок 36.2** — `PatchArchiveDialog` (окно) + `PatchArchiveDialogVM`
+  в `Modsync.Gui.Modules/Pack/`.
+- ✅ **Блок 36.3** — интеграция через `IPatchDialogService`
+  (`Modsync.Gui.Shared`) + `AvaloniaPatchDialogService`
+  (`ModsyncManager.Gui`).
+- ✅ **Блок 37.1** — переименование `CreatePackConfigVM/View`
+  → `PackConfigVM/View`. Свойство `PackVM.ConfigVM` (не
+  `PackConfigVM`, чтобы не конфликтовать с типом).
+- ✅ **Блок 37.2** — форма Pack Config умеет Load/Save as/Pack,
+  пустые дефолты, `_loadedConfigPath`, `_orphanedSources`,
+  `SavePathDisplay`, `OverwriteWarning`, `HasLoadedFrom` +
+  `LoadedFromPath`. `UnresolvedArchiveRowVM.LoadSources` +
+  `AddEmptySource`.
+- ✅ **Блок 37.3** — UX rework экрана Pack: `FilePickerView`
+  для config и кнопка `Pack` удалены; две кнопки
+  `Load config…` / `Create config…` открывают embedded-форму
+  `PackConfigVM`. `IPackRunner.RunAsync` удалён.
 
 ### В работе
 
@@ -757,6 +776,28 @@ Owner-тип не может быть static-классом (CS0718).
 репортов `IProgress<T>` — использовать **свой** `IProgress<T>`
 с `List<T>` под `lock`, а не BCL `Progress<T>`. Иначе флакает.
 
+### Про `IPatchDialogService` и циклические ссылки
+
+`Modsync.Gui.Shared` и `Modsync.Gui.Modules` **не могут** ссылаться
+на `ModsyncManager.Gui` (exe) — это нарушит направление
+зависимостей. Поэтому View во `Modsync.Gui.Modules` **не может**
+открыть `Window` напрямую. Решение: абстракция `IPatchDialogService`
+в `Modsync.Gui.Shared`, реализация — `AvaloniaPatchDialogService`
+в `ModsyncManager.Gui`. VM (`PackVM`) резолвит через
+`_sp.GetService<IPatchDialogService>()`.
+
+Аналогично для `PackConfigView` — но там View **embedded** (не
+модальный), поэтому он **не требует** абстракции.
+
+### Про `instancePath` из `Summary`, а не из `configPath`
+
+Если диалог показывает путь к `__ModsyncManager_Output/`, брать
+его из `PackSummary.InstancePath` (это `Snapshot.InstancePath` —
+папка инстанса). **Нельзя** использовать `configPath` (путь
+к `modsyncmanager-pack.json`) — он даст путь
+`C:\OmenRim 7\modsyncmanager-pack.json\__ModsyncManager_Output`,
+что неправильно.
+
 ### Про `Grid.ColumnSpacing` / `Grid.RowSpacing`
 
 В Avalonia 11 у `Grid` **нет** этих свойств. Только `RowDefinitions`
@@ -825,6 +866,59 @@ Owner-тип не может быть static-классом (CS0718).
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
+- - **2026-10-05** — Pack UX rework (блоки 36, 37).
+  - **Блок 36** — patch-архив для unmatched файлов.
+    - **`PatchArchiveBuilder`** (`Modsync.Pack`) — собирает
+      `ModsyncManager_Output.zip` из `__ModsyncManager_Output/`,
+      кладёт в `MO2/downloads/`. Структура архива — 1:1 от
+      `__ModsyncManager_Output/`, минус `modlist.json`. Не удаляет
+      исходную папку.
+    - **`PatchArchiveDialog`** — модальное окно (600×400) после
+      pack, если `PackSummary.UnmatchedFiles > 0`. Кнопки: Ignore /
+      Open output folder / Create patch archive.
+    - **`IPatchDialogService`** (`Modsync.Gui.Shared`) +
+      `AvaloniaPatchDialogService` (`ModsyncManager.Gui`) —
+      абстракция модального диалога. `PackVM` (библиотека) не
+      может открыть `Window` напрямую; резолвит через
+      `_sp.GetService`.
+    - **`instancePath` для диалога** — берётся из
+      `Summary.InstancePath` (правильный путь инстанса), **не** из
+      `configPath`.
+  - **Блок 37.1** — переименование `CreatePackConfigVM/View` →
+    `PackConfigVM/View`. Класс, файлы, `x:Class`, `x:DataType`,
+    логгер, DI-регистрация. Свойство `PackVM.ConfigVM` (не
+    `PackConfigVM`, чтобы не конфликтовать с именем типа —
+    CS0542). Тесты переименованы.
+  - **Блок 37.2** — форма Pack Config умеет:
+    - **`LoadConfigFileCommand`** + `LoadConfigAsync(path)` —
+      загрузить существующий `.json`, резолвит `instance.path`
+      от папки config, сканирует инстанс, заполняет профиль,
+      extensions/extras/archiveSources.
+    - **`SaveAsCommand`** — сохранить config в выбранное место,
+      не запускать packer.
+    - **`PackCommand`** — сохранить config (в `_loadedConfigPath`
+      или в `<InstancePath>/modsyncmanager-pack.json`) и поднять
+      `ConfigCreated`.
+    - **Пустые дефолты** для meta-полей, нейтральные
+      плейсхолдеры.
+    - **`_loadedConfigPath`**, **`_orphanedSources`**,
+      **`SavePathDisplay`**, **`OverwriteWarning`**,
+      **`HasLoadedFrom`** + **`LoadedFromPath`**.
+    - **`UnresolvedArchiveRowVM`** — `LoadSources(PackArchiveSource)`
+      + `AddEmptySource()`, `RemoveSourceInternal` → `RemoveSource`
+      (internal).
+  - **Блок 37.3** — UX rework экрана Pack.
+    - **`FilePickerView` для config** и кнопка `Pack` с главного
+      экрана удалены.
+    - Две кнопки: **`Load config…`** (приоритет, сверху) и
+      **`Create config…`** (снизу). Обе открывают embedded-форму
+      `PackConfigVM`.
+    - **`IPackRunner.RunAsync(configPath, ...)`** удалён из
+      интерфейса и реализации — единственный путь теперь
+      `RunFromConfigBuilderAsync`.
+    - **`PackVM`** больше не создаёт `FilePickerVM` для config и
+      не имеет `PackCommand` на главном экране.
+  - **Итог:** `dotnet test ModsyncManager.slnx` — 1244 теста, 0 failed.
 - **2026-10-04** — GUI: Pack без config + прогресс индексации.
   - **`PackConfigBuilder`** (`Modsync.Pack`) — новый публичный
     сервис. Сканирует `MO2/downloads/` на предмет non-nexus

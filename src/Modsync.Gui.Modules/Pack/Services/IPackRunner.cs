@@ -15,24 +15,15 @@ namespace Modsync.Gui.Modules.Pack.Services;
 /// готовый PackSummary, либо бросает исключение.
 ///
 /// Реализация (PackRunner) — тонкая. Вся логика — в pipeline.
+///
+/// Единственный путь запуска pack — из формы Pack Config.
+/// PackVM получает готовый PackConfigBuilderInput через событие
+/// ConfigCreated от PackConfigVM и передаёт его сюда.
 /// </summary>
 public interface IPackRunner
 {
     /// <summary>
-    /// Запустить pack из готового config-файла.
-    ///
-    /// Бросает:
-    ///   - OperationCanceledException (или AggregateException с cancellation)
-    ///     при отмене через ct;
-    ///   - любой exception из pipeline — при ошибке.
-    /// </summary>
-    Task<PackSummary> RunAsync(
-        string configPath,
-        IProgress<StepProgress> progress,
-        CancellationToken ct);
-
-    /// <summary>
-    /// Запустить pack из формы «Create Pack Config».
+    /// Запустить pack из формы Pack Config.
     ///
     /// Реализация:
     ///   1. Собирает PackConfig через PackConfigBuilder.Build(input).
@@ -44,7 +35,10 @@ public interface IPackRunner
     ///   3. Запускает PackPipeline.
     ///   4. Удаляет temp-файл в finally.
     ///
-    /// Бросает то же, что RunAsync.
+    /// Бросает:
+    ///   - OperationCanceledException (или AggregateException
+    ///     с cancellation) при отмене через ct;
+    ///   - любой exception из pipeline — при ошибке.
     /// </summary>
     Task<PackSummary> RunFromConfigBuilderAsync(
         PackConfigBuilderInput input,

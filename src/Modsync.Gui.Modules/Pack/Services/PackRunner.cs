@@ -27,18 +27,6 @@ public sealed class PackRunner : IPackRunner
         _logger = logger;
     }
 
-    public async Task<PackSummary> RunAsync(
-        string configPath,
-        IProgress<StepProgress> progress,
-        CancellationToken ct)
-    {
-        var input = PackInputFactory.Create(configPath);
-
-        var result = await _pipeline.ExecuteAsync(input, ct, progress);
-
-        return PackSummaryBuilder.Build(result);
-    }
-
     public async Task<PackSummary> RunFromConfigBuilderAsync(
         PackConfigBuilderInput input,
         IProgress<StepProgress> progress,

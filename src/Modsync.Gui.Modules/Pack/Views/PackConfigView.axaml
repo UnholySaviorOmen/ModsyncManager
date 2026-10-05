@@ -1,18 +1,24 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Modsync.Gui.Modules.Pack.ViewModels"
-             x:Class="Modsync.Gui.Modules.Pack.Views.CreatePackConfigView"
-             x:DataType="vm:CreatePackConfigVM">
+             x:Class="Modsync.Gui.Modules.Pack.Views.PackConfigView"
+             x:DataType="vm:PackConfigVM">
 
     <Grid RowDefinitions="Auto,*,Auto" Margin="20">
 
         <!-- Header -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
             <TextBlock Grid.Column="0"
-                       Text="Create Pack Config"
+                       Text="Pack Config"
                        FontSize="24"
                        FontWeight="Bold"
                        VerticalAlignment="Center" />
+
+            <Button Grid.Column="1"
+                    Content="Load config…"
+                    Command="{Binding LoadConfigFileCommand}"
+                    Padding="16,8"
+                    VerticalAlignment="Center" />
         </Grid>
 
         <!-- Body -->
@@ -21,9 +27,17 @@
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="20">
 
-                <!-- ============================================================
-                     Instance
-                     ============================================================ -->
+                <!-- Loaded from -->
+                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                           FontFamily="Consolas,Menlo,monospace"
+                           FontSize="11"
+                           TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding HasLoadedFrom}">
+                    <Run Text="Loaded from: " />
+                    <Run Text="{Binding LoadedFromPath}" />
+                </TextBlock>
+
+                <!-- Instance -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="Instance"
                                FontSize="16"
@@ -64,9 +78,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ============================================================
-                     Metadata
-                     ============================================================ -->
+                <!-- Metadata -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="Metadata"
                                FontSize="16"
@@ -84,7 +96,7 @@
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            FontSize="12" />
                                 <TextBox Text="{Binding MetaName}"
-                                         Watermark="e.g. OmenRim 7" />
+                                         Watermark="e.g. My Mod Pack" />
                             </StackPanel>
 
                             <StackPanel Spacing="4">
@@ -92,7 +104,7 @@
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            FontSize="12" />
                                 <TextBox Text="{Binding MetaVersion}"
-                                         Watermark="Semver, e.g. 0.1.0" />
+                                         Watermark="Semver, e.g. 1.0.0" />
                             </StackPanel>
 
                             <StackPanel Spacing="4">
@@ -136,9 +148,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ============================================================
-                     MO2 archive (fixed standard, editable-looking row)
-                     ============================================================ -->
+                <!-- MO2 archive -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="MO2 archive"
                                FontSize="16"
@@ -183,9 +193,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ============================================================
-                     Extensions
-                     ============================================================ -->
+                <!-- Extensions -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="Extensions"
                                FontSize="16"
@@ -226,9 +234,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ============================================================
-                     Extras
-                     ============================================================ -->
+                <!-- Extras -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="Extras"
                                FontSize="16"
@@ -269,9 +275,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ============================================================
-                     Archives without metadata
-                     ============================================================ -->
+                <!-- Archives without metadata -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="{Binding UnresolvedArchivesHeader}"
                                FontSize="16"
@@ -375,24 +379,45 @@
         </ScrollViewer>
 
         <!-- Footer -->
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,Auto"
-              Margin="0,16,0,0">
+        <StackPanel Grid.Row="2" Spacing="8" Margin="0,16,0,0">
 
-            <Button Grid.Column="0"
-                    Content="Cancel"
-                    Command="{Binding CancelCommand}"
-                    Padding="20,8" />
+            <!-- Save path / overwrite warning -->
+            <StackPanel Spacing="2">
+                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                           FontFamily="Consolas,Menlo,monospace"
+                           FontSize="11"
+                           TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding !HasLoadedFrom}">
+                    <Run Text="Config will be saved to: " />
+                    <Run Text="{Binding SavePathDisplay}" />
+                </TextBlock>
 
-            <Button Grid.Column="2"
-                    Content="Save as template…"
-                    Command="{Binding SaveTemplateCommand}"
-                    Padding="20,8"
-                    Margin="0,0,8,0" />
+                <TextBlock Foreground="{StaticResource WarningBrush}"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           IsVisible="{Binding OverwriteWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Run Text="⚠ " />
+                    <Run Text="{Binding OverwriteWarning}" />
+                </TextBlock>
+            </StackPanel>
 
-            <Button Grid.Column="3"
-                    Content="Create Config &amp; Pack"
-                    Command="{Binding CreateConfigCommand}"
-                    Padding="20,8" />
-        </Grid>
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                <Button Grid.Column="0"
+                        Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Padding="20,8" />
+
+                <Button Grid.Column="2"
+                        Content="Save as…"
+                        Command="{Binding SaveAsCommand}"
+                        Padding="20,8"
+                        Margin="0,0,8,0" />
+
+                <Button Grid.Column="3"
+                        Content="Pack"
+                        Command="{Binding PackCommand}"
+                        Padding="20,8" />
+            </Grid>
+        </StackPanel>
     </Grid>
 </UserControl>
