@@ -18,8 +18,6 @@ public class ObservableLogSinkDispatcherTests
 
         sink.Add(Entry("a"));
 
-        // FakeUiDispatcher выполняет action синхронно,
-        // поэтому запись уже в коллекции.
         sink.Entries.Should().HaveCount(1);
         sink.Entries[0].Message.Should().Be("a");
     }
@@ -52,12 +50,39 @@ public class ObservableLogSinkDispatcherTests
         var dispatcher = new FakeUiDispatcher();
         var sink = new ObservableLogSink(dispatcher);
 
-        for (int i = 0; i < 250; i++)
+        // MaxEntries = 1000. Добавляем 1200, ожидаем 1000.
+        for (int i = 0; i < 1200; i++)
             sink.Add(Entry($"msg-{i}"));
 
-        sink.Entries.Should().HaveCount(200);
-        sink.Entries[0].Message.Should().Be("msg-50");
-        sink.Entries[^1].Message.Should().Be("msg-249");
+        sink.Entries.Should().HaveCount(1000);
+        sink.Entries[0].Message.Should().Be("msg-200");
+        sink.Entries[^1].Message.Should().Be("msg-1199");
+    }
+
+    [Fact]
+    public void WithoutDispatcher_Trim_StillWorks()
+    {
+        var sink = new ObservableLogSink();
+
+        for (int i = 0; i < 1200; i++)
+            sink.Add(Entry($"msg-{i}"));
+
+        sink.Entries.Should().HaveCount(1000);
+        sink.Entries[0].Message.Should().Be("msg-200");
+        sink.Entries[^1].Message.Should().Be("msg-1199");
+    }
+
+    [Fact]
+    public void WithoutDispatcher_BelowMax_KeepsAll()
+    {
+        var sink = new ObservableLogSink();
+
+        for (int i = 0; i < 500; i++)
+            sink.Add(Entry($"msg-{i}"));
+
+        sink.Entries.Should().HaveCount(500);
+        sink.Entries[0].Message.Should().Be("msg-0");
+        sink.Entries[^1].Message.Should().Be("msg-499");
     }
 
     /// <summary>

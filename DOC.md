@@ -545,6 +545,12 @@ D:\Games\ModsyncManager\
 **`Delete`** — удалить файл (модель есть, packer не создаёт):
 - `destination` — путь.
 
+**Контракт `ExtensionEntry.Name`:** для `mo2.extensions[]` и
+`stockGame.extras[]` поле `Name` должно быть префиксом
+`Destination` всех `FromArchive`-директив entry. Условие:
+`Destination == Name` **или** `Destination` начинается с
+`Name + "/"`. Валидируется в `ValidateManifestStep`. 
+
 ### Источники архивов
 
 **`mirror`** — URL + hash:
@@ -1093,8 +1099,51 @@ Installer запускается через `InstallPipeline.ExecuteAsync`. В G
      `<InstancePath>/modlist.json` (перезапись).
    - Дальше — обычный пайплайн.
 
-**Про идемпотентность:** если манифест тот же — install
-идемпотентен (всё `Skipped`).
+### Reconcile при обновлении
+
+Installer **reconcile-ит** всё, что восстанавливает из манифеста:
+
+- **`mods/<Name>/`** (`SyncModsStep`): полный reconcile. Прямая
+  проверка (все директивы матчатся) + обратная (все файлы на
+  диске в директивах). При mismatch — папка мода пересоздаётся
+  целиком (`Directory.Delete + CreateDirectory + ExtractAllDirectives`).
+  Исключение — корневой `meta.ini` (его пишет `GenerateMetaIniStep`).
+
+- **`MO2/plugins/`, `MO2/tools/`, ...** (`ExecuteExtensionsStep`):
+  reconcile в границах entry из `mo2.extensions[]`. Entry-папка
+  пересоздаётся, если на диске есть лишние файлы. Границы — только
+  внутри entry. `MO2/` дистрибутив MO2 (`ModOrganizer.exe`,
+  `styles/`, `web/`, `dlls/`) не трогается вне entry.
+
+- **`Stock Game/`** (`ExecuteExtrasStep`): симметрично extensions.
+  Границы — только внутри entry из `stockGame.extras[]`. Игра
+  (`SkyrimSE.exe`, `Data/`) не трогается вне entry.
+
+- **`downloads/<archive>.meta`** (`GenerateArchiveMetaStep`):
+  мягкая семантика. Пишется для `ArchiveEntry.Meta != null`.
+  Не удаляется, если `Meta == null` (автор мог положить вручную).
+
+- **`mods/<Name>/meta.ini`** (`GenerateMetaIniStep`): reconcile
+  полный. Пишется для `mod.Meta != null`. Удаляется, если
+  `mod.Meta == null` и файл есть.
+
+- **`downloads/` архивы**: не чистятся. Ответственность пользователя.
+
+**Сценарии, которые reconcile ловит:**
+
+| Ситуация | Было (до 41.x) | Стало |
+|---|---|---|
+| Автор удалил файл из манифеста | ❌ Призрак остаётся | ✅ Recreate |
+| Автор удалил целый мод | ✅ (Pass 2) | ✅ (Pass 2) |
+| Автор переименовал файл | ✅ (recreate по hash) | ✅ |
+| Автор перенёс файл в другой мод | ❌ Дубликат | ✅ Recreate обеих сторон |
+| Автор удалил entry из extensions/extras | ❌ Файлы остаются | ✅ Recreate |
+| Соседние файлы вне entry | — | ✅ Не трогаются |
+
+**Про идемпотентность:** повторный install на неизменённом
+манифесте — полностью `Skipped`. Первый install после обновления
+манифеста может пересоздать несколько модов (recreate) — это
+ожидаемое поведение.
 
 ---
 
@@ -1452,6 +1501,7 @@ cache». Очищает таблицу `file_hashes`. `VACUUM` возвраща�
 | Файл extension/extra не найден | Unmatched → `__ModsyncManager_Output` |
 | `FromArchiveDirective.Archive` не существует | `InvalidOperationException` |
 | Отмена во время pack | `OperationCanceledException` |
+| `extensionEntry.Name` не префикс `Destination` | `InvalidOperationException` |
 
 ### Матрица installer-а
 

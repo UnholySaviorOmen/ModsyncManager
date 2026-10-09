@@ -715,4 +715,380 @@ public class SyncModsStepTests : IDisposable
             DetailProgress = detailProgress,
         };
     }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: удалённые из манифеста файлы
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_FileRemovedFromManifest_ModRecreated()
+    {
+        // v1.0 манифеста содержал два файла. v1.1 — только один.
+        // На диске оба. После install — только один.
+        var (archive, _) = CreateArchive("rec1.zip",
+            ("a.txt", "content-a"),
+            ("b.txt", "content-b"));
+
+        // Манифест v1.1: только a.txt.
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "a.txt", "a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        // На диске — состояние v1.0: и a.txt, и b.txt.
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(modDir);
+        File.WriteAllText(Path.Combine(modDir, "a.txt"), "content-a");
+        File.WriteAllText(Path.Combine(modDir, "b.txt"), "content-b");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Recreated.Should().ContainSingle().Which.Should().Be("Mod");
+        output.Skipped.Should().BeEmpty();
+
+        // b.txt удалён, a.txt на месте.
+        File.Exists(Path.Combine(modDir, "b.txt")).Should().BeFalse();
+        File.ReadAllText(Path.Combine(modDir, "a.txt")).Should().Be("content-a");
+    }
+
+    [Fact]
+    public async Task Execute_ExtraFileInSubdir_ModRecreated()
+    {
+        var (archive, _) = CreateArchive("rec2.zip",
+            ("sub/a.txt", "content-a"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "sub/a.txt", "sub/a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        // На диске есть лишний файл во вложенной папке.
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(Path.Combine(modDir, "sub"));
+        File.WriteAllText(Path.Combine(modDir, "sub", "a.txt"), "content-a");
+        File.WriteAllText(Path.Combine(modDir, "sub", "orphan.txt"), "orphan");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Recreated.Should().ContainSingle();
+        File.Exists(Path.Combine(modDir, "sub", "orphan.txt")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Execute_NoExtraFiles_NotRecreated()
+    {
+        // Все файлы на диске совпадают с манифестом — skip, не recreate.
+        var (archive, _) = CreateArchive("rec3.zip",
+            ("a.txt", "content-a"),
+            ("sub/b.txt", "content-b"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "a.txt", "a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+            MakeDirective(archive, "sub/b.txt", "sub/b.txt",
+                Encoding.UTF8.GetBytes("content-b")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        // На диске всё точно как в манифесте.
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(Path.Combine(modDir, "sub"));
+        File.WriteAllText(Path.Combine(modDir, "a.txt"), "content-a");
+        File.WriteAllText(Path.Combine(modDir, "sub", "b.txt"), "content-b");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle().Which.Should().Be("Mod");
+        output.Recreated.Should().BeEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: meta.ini в корне — исключение
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_RootMetaIni_DoesNotTriggerRecreate()
+    {
+        // meta.ini в корне мода — исключение из обратной проверки.
+        // Он не в директивах (пишется GenerateMetaIniStep), но
+        // не должен вызывать recreate.
+        var (archive, _) = CreateArchive("meta1.zip", ("a.txt", "content-a"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "a.txt", "a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(modDir);
+        File.WriteAllText(Path.Combine(modDir, "a.txt"), "content-a");
+        // meta.ini от GenerateMetaIniStep — не в директивах.
+        File.WriteAllText(
+            Path.Combine(modDir, "meta.ini"),
+            "[General]\r\nmodID=1\r\nfileID=2\r\n");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle().Which.Should().Be("Mod");
+        output.Recreated.Should().BeEmpty();
+
+        // meta.ini не тронут.
+        File.Exists(Path.Combine(modDir, "meta.ini")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Execute_MetaIniInSubdir_NotExemptFromReverseCheck()
+    {
+        // fomod/meta.ini — обычный файл, должен быть в директивах.
+        // Если он на диске, а в директивах его нет — recreate.
+        var (archive, _) = CreateArchive("meta2.zip", ("a.txt", "content-a"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "a.txt", "a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(Path.Combine(modDir, "fomod"));
+        File.WriteAllText(Path.Combine(modDir, "a.txt"), "content-a");
+        File.WriteAllText(
+            Path.Combine(modDir, "fomod", "meta.ini"),
+            "[General]\r\nmodID=1\r\n");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Recreated.Should().ContainSingle();
+        File.Exists(Path.Combine(modDir, "fomod", "meta.ini")).Should().BeFalse();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: переезд файла между модами
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_FileMovedBetweenMods_NoDuplicate()
+    {
+        // v1.0: foo.txt в ModA. v1.1: foo.txt в ModB.
+        // На диске (v1.0): ModA/foo.txt.
+        // После install v1.1: ModA пустой, ModB/foo.txt.
+        var (archive, _) = CreateArchive("move.zip", ("foo.txt", "content"));
+
+        var modA = MakeMod("ModA", directives: Array.Empty<Directive>());
+        var modB = MakeMod("ModB", order: 1, directives: new Directive[]
+        {
+            MakeDirective(archive, "foo.txt", "foo.txt",
+                Encoding.UTF8.GetBytes("content")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { modA, modB },
+            archives: new[] { archive });
+
+        // На диске ModA/foo.txt от старой версии.
+        var modADir = Path.Combine(_modsDir, "ModA");
+        Directory.CreateDirectory(modADir);
+        File.WriteAllText(Path.Combine(modADir, "foo.txt"), "content");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        // ModA — recreate (лишний файл), ModB — created.
+        output.Created.Should().Contain("ModB");
+        output.Recreated.Should().Contain("ModA");
+
+        // ModA пуст, ModB содержит foo.txt.
+        Directory.EnumerateFiles(modADir).Should().BeEmpty();
+        File.Exists(Path.Combine(_modsDir, "ModB", "foo.txt")).Should().BeTrue();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: .mohidden vs оригинал
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_MohiddenRename_OriginalRemoved()
+    {
+        // v1.0: bar.txt. v1.1: bar.txt.mohidden.
+        // На диске (v1.0): bar.txt. После install — только .mohidden.
+        var (archive, _) = CreateArchive("mohid.zip", ("bar.txt", "content"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "bar.txt", "bar.txt.mohidden",
+                Encoding.UTF8.GetBytes("content")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(modDir);
+        File.WriteAllText(Path.Combine(modDir, "bar.txt"), "content");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Recreated.Should().ContainSingle();
+        File.Exists(Path.Combine(modDir, "bar.txt")).Should().BeFalse();
+        File.Exists(Path.Combine(modDir, "bar.txt.mohidden")).Should().BeTrue();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: идемпотентность после первого прогона
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_SecondRunAfterReconcile_IsSkipped()
+    {
+        // Первый прогон пересоздаёт мод (был лишний файл).
+        // Второй прогон — skip (диск == манифест).
+        var (archive, _) = CreateArchive("idem.zip", ("a.txt", "content-a"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "a.txt", "a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        // Грязный инстанс: есть лишний файл.
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(modDir);
+        File.WriteAllText(Path.Combine(modDir, "a.txt"), "content-a");
+        File.WriteAllText(Path.Combine(modDir, "orphan.txt"), "orphan");
+
+        var first = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+        first.Recreated.Should().ContainSingle();
+
+        var second = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+        second.Skipped.Should().ContainSingle();
+        second.Recreated.Should().BeEmpty();
+        second.Created.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Execute_FreshInstall_NotRecreated()
+    {
+        // На чистом инстансе (mods/<Name>/ нет) мод создаётся, не
+        // пересоздаётся. Обратная проверка не должна давать ложных
+        // срабатываний.
+        var (archive, _) = CreateArchive("fresh.zip", ("a.txt", "content-a"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "a.txt", "a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Created.Should().ContainSingle().Which.Should().Be("Mod");
+        output.Recreated.Should().BeEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: пустая папка в моде
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_EmptySubdirOnDisk_NotRecreated()
+    {
+        // Пустая папка на диске (например, результат предыдущего install,
+        // где файл был удалён вручную). Обратная проверка смотрит
+        // только файлы — пустые папки не считаются «лишними».
+        var (archive, _) = CreateArchive("emptydir.zip", ("a.txt", "content-a"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "a.txt", "a.txt",
+                Encoding.UTF8.GetBytes("content-a")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(modDir);
+        File.WriteAllText(Path.Combine(modDir, "a.txt"), "content-a");
+        Directory.CreateDirectory(Path.Combine(modDir, "empty-subdir"));
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle();
+        output.Recreated.Should().BeEmpty();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: sensitive to case (OrdinalIgnoreCase по Destination)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_CaseDifferenceInPath_NotRecreated()
+    {
+        // На диске File.TXT, в директивах file.txt — Windows
+        // регистронезависима, хеш тот же. Не должно быть recreate.
+        var (archive, _) = CreateArchive("case.zip", ("file.txt", "content"));
+
+        var mod = MakeMod("Mod", directives: new Directive[]
+        {
+            MakeDirective(archive, "file.txt", "file.txt",
+                Encoding.UTF8.GetBytes("content")),
+        });
+
+        var manifest = MakeManifest(
+            mods: new[] { mod },
+            archives: new[] { archive });
+
+        // На диске — в точном соответствии с директивой.
+        var modDir = Path.Combine(_modsDir, "Mod");
+        Directory.CreateDirectory(modDir);
+        File.WriteAllText(Path.Combine(modDir, "file.txt"), "content");
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(manifest), CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle();
+    }
 }

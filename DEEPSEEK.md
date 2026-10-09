@@ -1,8 +1,8 @@
 # ModsyncManager — состояние проекта и план работ
 
-**Обновлено:** 2026-10-05
-**Всего тестов:** 1269, 0 failed
-**Текущий блок:** все запланированные блоки закрыты
+**Обновлено:** 2026-10-09
+**Всего тестов:** 1319, 0 failed
+**Текущий блок:** 41.4 + 4g закрыты
 **Следующий блок:** (не определён)
 
 **Спутные документы:**
@@ -44,13 +44,14 @@ ModsyncManager работает с **результатом** установки
 
 Прикладываю: DEEPSEEK.md, repo-dump.md (свежий).
 
-Текущее состояние: ~1269 тестов, 0 failed. Закрыты: MVP (packer,
+Текущее состояние: ~1319 тестов, 0 failed. Закрыты: MVP (packer,
 installer, verify), Фаза 2 (общие API для GUI), Фаза 6 (Nexus
 Premium), Фаза 3 (GUI, шаги 3.1–3.8), Фаза 3.9 (редизайн GUI +
 Home-дашборд), Nexus credential UI, nxm:// handler без WebView2,
 v0.2.0 (блоки 1.1, 1.2, 2.1, 3.1, 3.2), блоки 36–40 (patch-архив
 для unmatched, Pack UX rework, восстановление .meta для архивов,
-полировка, Nexus auth pre-flight).
+полировка, Nexus auth pre-flight), блоки 41.1–41.4 (reconcile
+mods/extensions/extras + валидация entry.Name), 4g (лимит логов).
 
 v0.2.0 закрыт 2026-10-01. Отменены: блок 2.2 (глобальный реестр
 `archives.db`), Spectre-прогресс и `--verbose` для CLI, механизм
@@ -204,6 +205,21 @@ DEEPSEEK.md — только по запросу.
   `PreflightNexusAuthStep` — новый шаг pipeline (2-й по счёту).
   Если в манифесте есть `NexusSourceRef` и ключа нет — падаем сразу,
   с сообщением «Open Settings → Nexus». Installer стал 13 шагов.
+- ✅ **Блок 41.1** — reconcile `mods/<Name>/`: `SyncModsStep`
+  пересоздаёт папку мода, если на диске есть файлы, которых нет
+  в директивах (обратная проверка). Исключение — корневой
+  `meta.ini`.
+- ✅ **Блок 41.2** — reconcile extensions (`MO2/plugins/`,
+  `MO2/tools/`, ...): `ExecuteExtensionsStep` пересоздаёт entry-папку,
+  если на диске есть лишние файлы. Границы — только внутри entry.
+- ✅ **Блок 41.3** — reconcile extras (`Stock Game/`):
+  `ExecuteExtrasStep` симметрично 41.2. Границы — только внутри entry.
+- ✅ **Блок 41.4** — валидация `entry.Name` в `ValidateManifestStep`:
+  `entry.Name` должен быть префиксом `Destination` всех
+  `FromArchive`-директив entry (для `mo2.extensions[]` и
+  `stockGame.extras[]`).
+- ✅ **Блок 4g** — `ObservableLogSink.MaxEntries` увеличен
+  с 200 до 1000.
 
 ### В работе
 
@@ -413,6 +429,17 @@ tests/
 - **`InstallPipeline.BuildArchivesById`** — включая MO2-архив.
 - **`ExecuteExtensionsStep`/`ExecuteExtrasStep` — Skipped**, если
   файлы уже на месте.
+- **Reconcile `mods/<Name>/` — полный.** `ModMatchesManifest`:
+  прямая проверка (все директивы матчатся) + обратная (все файлы
+  на диске в директивах). Исключение — корневой `meta.ini`.
+- **Reconcile extensions/extras — в границах entry.**
+  `ExecuteExtensionsStep` и `ExecuteExtrasStep` пересоздают
+  entry-папку, если на диске есть лишние файлы. Границы — только
+  внутри entry (не трогают `MO2/` дистрибутив или `Stock Game/` игру).
+- **Контракт `entry.Name`:** `ExtensionEntry.Name` в
+  `manifest.Mo2.Extensions[]` / `manifest.StockGame.Extras[]`
+  должен быть префиксом `Destination` всех `FromArchive`-директив.
+  Валидируется в `ValidateManifestStep`.
 
 ### Verify
 
@@ -496,6 +523,10 @@ tests/
   Create patch archive.
 - **`IPatchDialogService` + `AvaloniaPatchDialogService`** —
   абстракция модального диалога.
+- **`ObservableLogSink.MaxEntries = 1000.** Хранит 1000 последних
+  записей, вытесняет старые. На длинных прогонах (pack + install +
+  verify подряд с диагностикой unmatched) 200 записей переполнялись
+  мгновенно.
 
 ### Фаза 3.9 — Дизайн
 
@@ -984,6 +1015,18 @@ Pre-flight (`PreflightNexusAuthStep`) ловит это ещё раньше:
   файл. Для воспроизведения он не нужен (пользователь его
   не имеет). Автор добавляет mirror-source, если хочет
   публиковать. Сознательно оставлено как есть.
+- **Cross-entry overlap** (`plugins/` + `plugins/fomod.dll`
+  одновременно в `mo2.extensions[]`) — формально каждый
+  удовлетворяет контракту, но installer не сможет обработать
+  корректно. Валидация — отдельная задача, если появится реальный
+  сценарий.
+- **`CreateDirectory` директива через конфиг** — author-override
+  через `modDirectives.createDirectories[]`. Реальные сценарии
+  редки, а ручные правки `modlist.json` теряются при перезаписи
+  packer-ом. Если появится потребность — вернёмся.
+- **Виртуализация `ItemsControl` в `LogView`** — 1000 записей
+  без виртуализации на современных машинах не тормозят. Если
+  окажется иначе — отдельный блок.
 
 ---
 
@@ -1009,6 +1052,25 @@ Pre-flight (`PreflightNexusAuthStep`) ловит это ещё раньше:
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
+- **2026-10-09** — reconcile installer-а и валидация (блоки 41.1–41.4, 4g).
+  - **41.1** — `SyncModsStep.AllDirectivesMatch` →
+    `ModMatchesManifest`. Обратная проверка: все файлы на диске
+    в `mods/<Name>/` должны быть в директивной мапе. Исключение —
+    корневой `meta.ini`. Ловит «файлы-призраки»: автор удалил файл
+    из манифеста, но он остался с прошлой версии; файл переехал
+    из одного мода в другой.
+  - **41.2** — `ExecuteExtensionsStep`: три ветки (`Directory.Exists`
+    → reconcile; `File.Exists` → проверка/перезапись; ничего нет →
+    создать). `DirectoryMatchesManifest` — прямая + обратная.
+    Границы — только внутри entry из `mo2.extensions[]`.
+  - **41.3** — `ExecuteExtrasStep`: симметрично 41.2. Границы —
+    только внутри entry из `stockGame.extras[]`.
+  - **41.4** — `ValidateManifestStep.ValidateExtensionEntries`:
+    `entry.Name` — префикс `Destination` всех `FromArchive`-директив
+    (для `mo2.extensions[]` и `stockGame.extras[]`). Ловит
+    неконсистентные манифесты на packer-стороне.
+  - **4g** — `ObservableLogSink.MaxEntries`: 200 → 1000.
+  - **Итог:** `dotnet test` — 1319 тестов, 0 failed.
 - **2026-10-05** — Nexus auth UX: pre-flight + no-retry (блок 40).
   - **Проблема:** при install без Nexus-ключа `SyncArchivesStep`
     пытался скачать N nexus-архивов параллельно, каждый падал

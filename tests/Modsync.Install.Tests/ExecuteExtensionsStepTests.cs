@@ -97,7 +97,6 @@ public class ExecuteExtensionsStepTests : IDisposable
     private static ModlistManifest MakeManifest(
         IReadOnlyList<ExtensionEntry> extensions)
     {
-        // Минимальный валидный манифест, чтобы не падало на конструкторе.
         return new ModlistManifest
         {
             SchemaVersion = "1.0.0",
@@ -163,7 +162,7 @@ public class ExecuteExtensionsStepTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    //  2. Файла нет → Written
+    //  2. Entry-файл: файла нет → Written
     // ------------------------------------------------------------------
 
     [Fact]
@@ -177,23 +176,25 @@ public class ExecuteExtensionsStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_ext", _hashCache);
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("local_ext", "file.dll", "file.dll",
+        var entry = MakeEntry("plugins/file.dll",
+            MakeFromArchive("local_ext", "file.dll", "plugins/file.dll",
                 hash, content.Length));
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        output.Written.Should().ContainSingle().Which.Should().Be("ext");
+        output.Written.Should().ContainSingle()
+            .Which.Should().Be("plugins/file.dll");
         output.Skipped.Should().BeEmpty();
 
-        File.Exists(Mo2File("file.dll")).Should().BeTrue();
-        TestArchives.ReadBytes(Mo2File("file.dll")).Should().Equal(content);
+        File.Exists(Mo2File("plugins/file.dll")).Should().BeTrue();
+        TestArchives.ReadBytes(Mo2File("plugins/file.dll"))
+            .Should().Equal(content);
     }
 
     // ------------------------------------------------------------------
-    //  3. Файл есть, hash совпадает → Skipped
+    //  3. Entry-файл: файл есть, hash совпадает → Skipped
     // ------------------------------------------------------------------
 
     [Fact]
@@ -208,10 +209,11 @@ public class ExecuteExtensionsStepTests : IDisposable
             archivePath, "local_ext", _hashCache);
 
         // Кладём файл заранее.
-        File.WriteAllBytes(Mo2File("file.dll"), content);
+        Directory.CreateDirectory(Mo2File("plugins"));
+        File.WriteAllBytes(Mo2File("plugins/file.dll"), content);
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("local_ext", "file.dll", "file.dll",
+        var entry = MakeEntry("plugins/file.dll",
+            MakeFromArchive("local_ext", "file.dll", "plugins/file.dll",
                 hash, content.Length));
 
         var output = await _step.ExecuteAsync(
@@ -219,11 +221,12 @@ public class ExecuteExtensionsStepTests : IDisposable
             CancellationToken.None);
 
         output.Written.Should().BeEmpty();
-        output.Skipped.Should().ContainSingle().Which.Should().Be("ext");
+        output.Skipped.Should().ContainSingle()
+            .Which.Should().Be("plugins/file.dll");
     }
 
     // ------------------------------------------------------------------
-    //  4. Файл есть, hash не тот → Written, файл перезаписан
+    //  4. Entry-файл: файл есть, hash не тот → Written, перезаписан
     // ------------------------------------------------------------------
 
     [Fact]
@@ -238,63 +241,71 @@ public class ExecuteExtensionsStepTests : IDisposable
             archivePath, "local_ext", _hashCache);
 
         // Кладём с другим содержимым.
-        File.WriteAllBytes(Mo2File("file.dll"),
+        Directory.CreateDirectory(Mo2File("plugins"));
+        File.WriteAllBytes(Mo2File("plugins/file.dll"),
             Encoding.UTF8.GetBytes("stale"));
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("local_ext", "file.dll", "file.dll",
+        var entry = MakeEntry("plugins/file.dll",
+            MakeFromArchive("local_ext", "file.dll", "plugins/file.dll",
                 hash, content.Length));
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        output.Written.Should().ContainSingle().Which.Should().Be("ext");
-        TestArchives.ReadBytes(Mo2File("file.dll")).Should().Equal(content);
+        output.Written.Should().ContainSingle()
+            .Which.Should().Be("plugins/file.dll");
+        TestArchives.ReadBytes(Mo2File("plugins/file.dll"))
+            .Should().Equal(content);
     }
 
     // ------------------------------------------------------------------
-    //  5. Часть файлов совпадает → Written только за недостающие
+    //  5. Entry-папка: часть файлов совпадает → Written
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_PartialMatch_OnlyMissingCopied()
+    public async Task Execute_PackagePartialMatch_OnlyMissingCopied()
     {
         var content1 = Encoding.UTF8.GetBytes("one");
         var content2 = Encoding.UTF8.GetBytes("two");
 
         var archivePath = TestArchives.CreateZip(
-            _downloadsPath, "ext.zip",
-            ("one.dll", content1),
-            ("two.dll", content2));
+            _downloadsPath, "pkg.zip",
+            ("BethINI/one.dll", content1),
+            ("BethINI/two.dll", content2));
         var archiveEntry = TestArchives.MakeArchiveEntry(
-            archivePath, "local_ext", _hashCache);
+            archivePath, "local_pkg", _hashCache);
 
         // one.dll уже на месте, two.dll — нет.
-        File.WriteAllBytes(Mo2File("one.dll"), content1);
+        Directory.CreateDirectory(Mo2File("tools/BethINI"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/one.dll"), content1);
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("local_ext", "one.dll", "one.dll",
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg", "BethINI/one.dll",
+                "tools/BethINI/one.dll",
                 TestArchives.HashOf(content1), content1.Length),
-            MakeFromArchive("local_ext", "two.dll", "two.dll",
+            MakeFromArchive("local_pkg", "BethINI/two.dll",
+                "tools/BethINI/two.dll",
                 TestArchives.HashOf(content2), content2.Length));
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        output.Written.Should().ContainSingle().Which.Should().Be("ext");
-        File.Exists(Mo2File("one.dll")).Should().BeTrue();
-        File.Exists(Mo2File("two.dll")).Should().BeTrue();
-        TestArchives.ReadBytes(Mo2File("two.dll")).Should().Equal(content2);
+        output.Written.Should().ContainSingle()
+            .Which.Should().Be("tools/BethINI");
+        File.Exists(Mo2File("tools/BethINI/one.dll")).Should().BeTrue();
+        File.Exists(Mo2File("tools/BethINI/two.dll")).Should().BeTrue();
+        TestArchives.ReadBytes(Mo2File("tools/BethINI/two.dll"))
+            .Should().Equal(content2);
     }
 
     // ------------------------------------------------------------------
-    //  6. Несколько entries → соответствующие Written/Skipped
+    //  6. Два entries — файл и папка
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_MultipleEntries_MixedWrittenSkipped()
+    public async Task Execute_TwoEntries_MixedWrittenSkipped()
     {
         var contentA = Encoding.UTF8.GetBytes("A");
         var contentB = Encoding.UTF8.GetBytes("B");
@@ -302,18 +313,21 @@ public class ExecuteExtensionsStepTests : IDisposable
         var archivePath = TestArchives.CreateZip(
             _downloadsPath, "ext.zip",
             ("a.dll", contentA),
-            ("b.dll", contentB));
+            ("B/B.exe", contentB));
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_ext", _hashCache);
 
-        // A уже на месте, B — нет.
-        File.WriteAllBytes(Mo2File("a.dll"), contentA);
+        // Entry-файл: a.dll уже на месте.
+        Directory.CreateDirectory(Mo2File("plugins"));
+        File.WriteAllBytes(Mo2File("plugins/a.dll"), contentA);
 
-        var entryA = MakeEntry("ext-a",
-            MakeFromArchive("local_ext", "a.dll", "a.dll",
+        var entryA = MakeEntry("plugins/a.dll",
+            MakeFromArchive("local_ext", "a.dll", "plugins/a.dll",
                 TestArchives.HashOf(contentA), contentA.Length));
-        var entryB = MakeEntry("ext-b",
-            MakeFromArchive("local_ext", "b.dll", "b.dll",
+
+        // Entry-папка: B — нет на диске.
+        var entryB = MakeEntry("tools/B",
+            MakeFromArchive("local_ext", "B/B.exe", "tools/B/B.exe",
                 TestArchives.HashOf(contentB), contentB.Length));
 
         var output = await _step.ExecuteAsync(
@@ -321,61 +335,64 @@ public class ExecuteExtensionsStepTests : IDisposable
                 MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        output.Written.Should().ContainSingle().Which.Should().Be("ext-b");
-        output.Skipped.Should().ContainSingle().Which.Should().Be("ext-a");
+        output.Written.Should().ContainSingle()
+            .Which.Should().Be("tools/B");
+        output.Skipped.Should().ContainSingle()
+            .Which.Should().Be("plugins/a.dll");
     }
 
     // ------------------------------------------------------------------
-    //  7. Destination с подпапкой → папки создаются
+    //  7. Entry-папка: destination с подпапкой → папки создаются
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_DestinationWithSubdir_CreatesFolders()
+    public async Task Execute_PackageWithSubdir_CreatesFolders()
     {
         var content = Encoding.UTF8.GetBytes("data");
         var hash = TestArchives.HashOf(content);
 
         var archivePath = TestArchives.CreateZip(
-            _downloadsPath, "ext.zip", ("plugins/fomod.dll", content));
+            _downloadsPath, "pkg.zip",
+            ("BethINI/sub/data.bin", content));
         var archiveEntry = TestArchives.MakeArchiveEntry(
-            archivePath, "local_ext", _hashCache);
+            archivePath, "local_pkg", _hashCache);
 
-        var entry = MakeEntry("fomod",
-            MakeFromArchive("local_ext", "plugins/fomod.dll",
-                "plugins/fomod.dll", hash, content.Length));
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg", "BethINI/sub/data.bin",
+                "tools/BethINI/sub/data.bin", hash, content.Length));
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
         output.Written.Should().ContainSingle();
-        File.Exists(Mo2File("plugins/fomod.dll")).Should().BeTrue();
+        File.Exists(Mo2File("tools/BethINI/sub/data.bin")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
-    //  8. Forward slashes в Destination
+    //  8. Entry-файл: Destination с подпапкой
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_DestinationForwardSlashes_Handled()
+    public async Task Execute_FileWithSubdirPath_CreatesParentDir()
     {
-        var content = Encoding.UTF8.GetBytes("deep");
+        var content = Encoding.UTF8.GetBytes("dll");
         var hash = TestArchives.HashOf(content);
 
         var archivePath = TestArchives.CreateZip(
-            _downloadsPath, "ext.zip", ("a/b/c.txt", content));
+            _downloadsPath, "ext.zip", ("fomod.dll", content));
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_ext", _hashCache);
 
-        var entry = MakeEntry("deep",
-            MakeFromArchive("local_ext", "a/b/c.txt",
-                "a/b/c.txt", hash, content.Length));
+        var entry = MakeEntry("plugins/sub/fomod.dll",
+            MakeFromArchive("local_ext", "fomod.dll",
+                "plugins/sub/fomod.dll", hash, content.Length));
 
         await _step.ExecuteAsync(
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        File.Exists(Mo2File("a/b/c.txt")).Should().BeTrue();
+        File.Exists(Mo2File("plugins/sub/fomod.dll")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
@@ -385,13 +402,14 @@ public class ExecuteExtensionsStepTests : IDisposable
     [Fact]
     public async Task Execute_EntryWithNoDirectives_Skipped()
     {
-        var entry = MakeEntry("empty");
+        var entry = MakeEntry("plugins/empty.dll");
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }), CancellationToken.None);
 
         output.Written.Should().BeEmpty();
-        output.Skipped.Should().ContainSingle().Which.Should().Be("empty");
+        output.Skipped.Should().ContainSingle()
+            .Which.Should().Be("plugins/empty.dll");
     }
 
     // ------------------------------------------------------------------
@@ -401,18 +419,19 @@ public class ExecuteExtensionsStepTests : IDisposable
     [Fact]
     public async Task Execute_EntryWithOnlyNonFromArchiveDirectives_Skipped()
     {
-        var entry = MakeEntry("weird",
+        var entry = MakeEntry("plugins/weird.dll",
             new CreateDirectoryDirective { Destination = "folder/" });
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }), CancellationToken.None);
 
         output.Written.Should().BeEmpty();
-        output.Skipped.Should().ContainSingle().Which.Should().Be("weird");
+        output.Skipped.Should().ContainSingle()
+            .Which.Should().Be("plugins/weird.dll");
     }
 
     // ------------------------------------------------------------------
-    //  11. Две директивы из одного архива
+    //  11. Entry-папка: две директивы из одного архива
     // ------------------------------------------------------------------
 
     [Fact]
@@ -422,16 +441,18 @@ public class ExecuteExtensionsStepTests : IDisposable
         var content2 = Encoding.UTF8.GetBytes("two");
 
         var archivePath = TestArchives.CreateZip(
-            _downloadsPath, "ext.zip",
-            ("one.dll", content1),
-            ("two.dll", content2));
+            _downloadsPath, "pkg.zip",
+            ("BethINI/one.dll", content1),
+            ("BethINI/two.dll", content2));
         var archiveEntry = TestArchives.MakeArchiveEntry(
-            archivePath, "local_ext", _hashCache);
+            archivePath, "local_pkg", _hashCache);
 
-        var entry = MakeEntry("pair",
-            MakeFromArchive("local_ext", "one.dll", "one.dll",
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg", "BethINI/one.dll",
+                "tools/BethINI/one.dll",
                 TestArchives.HashOf(content1), content1.Length),
-            MakeFromArchive("local_ext", "two.dll", "two.dll",
+            MakeFromArchive("local_pkg", "BethINI/two.dll",
+                "tools/BethINI/two.dll",
                 TestArchives.HashOf(content2), content2.Length));
 
         var output = await _step.ExecuteAsync(
@@ -439,12 +460,12 @@ public class ExecuteExtensionsStepTests : IDisposable
             CancellationToken.None);
 
         output.Written.Should().ContainSingle();
-        File.Exists(Mo2File("one.dll")).Should().BeTrue();
-        File.Exists(Mo2File("two.dll")).Should().BeTrue();
+        File.Exists(Mo2File("tools/BethINI/one.dll")).Should().BeTrue();
+        File.Exists(Mo2File("tools/BethINI/two.dll")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
-    //  12. Две директивы из разных архивов
+    //  12. Entry-папка: две директивы из разных архивов
     // ------------------------------------------------------------------
 
     [Fact]
@@ -454,19 +475,21 @@ public class ExecuteExtensionsStepTests : IDisposable
         var contentB = Encoding.UTF8.GetBytes("B");
 
         var archiveA = TestArchives.CreateZip(
-            _downloadsPath, "a.zip", ("a.dll", contentA));
+            _downloadsPath, "a.zip", ("A/a.dll", contentA));
         var archiveB = TestArchives.CreateZip(
-            _downloadsPath, "b.zip", ("b.dll", contentB));
+            _downloadsPath, "b.zip", ("B/b.dll", contentB));
 
         var entryA = TestArchives.MakeArchiveEntry(
             archiveA, "local_a", _hashCache);
         var entryB = TestArchives.MakeArchiveEntry(
             archiveB, "local_b", _hashCache);
 
-        var entry = MakeEntry("pair",
-            MakeFromArchive("local_a", "a.dll", "a.dll",
+        var entry = MakeEntry("tools/Mixed",
+            MakeFromArchive("local_a", "A/a.dll",
+                "tools/Mixed/a.dll",
                 TestArchives.HashOf(contentA), contentA.Length),
-            MakeFromArchive("local_b", "b.dll", "b.dll",
+            MakeFromArchive("local_b", "B/b.dll",
+                "tools/Mixed/b.dll",
                 TestArchives.HashOf(contentB), contentB.Length));
 
         var output = await _step.ExecuteAsync(
@@ -474,12 +497,12 @@ public class ExecuteExtensionsStepTests : IDisposable
             CancellationToken.None);
 
         output.Written.Should().ContainSingle();
-        File.Exists(Mo2File("a.dll")).Should().BeTrue();
-        File.Exists(Mo2File("b.dll")).Should().BeTrue();
+        File.Exists(Mo2File("tools/Mixed/a.dll")).Should().BeTrue();
+        File.Exists(Mo2File("tools/Mixed/b.dll")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
-    //  13. archiveId не найден в map
+    //  13. ArchiveId не найден в map
     // ------------------------------------------------------------------
 
     [Fact]
@@ -487,8 +510,8 @@ public class ExecuteExtensionsStepTests : IDisposable
     {
         var content = Encoding.UTF8.GetBytes("x");
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("nonexistent", "file.dll", "file.dll",
+        var entry = MakeEntry("plugins/file.dll",
+            MakeFromArchive("nonexistent", "file.dll", "plugins/file.dll",
                 TestArchives.HashOf(content), content.Length));
 
         var act = async () => await _step.ExecuteAsync(
@@ -507,7 +530,6 @@ public class ExecuteExtensionsStepTests : IDisposable
     {
         var content = Encoding.UTF8.GetBytes("x");
 
-        // ArchiveEntry есть, но самого zip-файла нет.
         var fakeEntry = new ArchiveEntry
         {
             Id = "local_fake",
@@ -518,8 +540,8 @@ public class ExecuteExtensionsStepTests : IDisposable
                 Core.Models.Manifest.Sources.ArchiveSourceRef>(),
         };
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("local_fake", "file.dll", "file.dll",
+        var entry = MakeEntry("plugins/file.dll",
+            MakeFromArchive("local_fake", "file.dll", "plugins/file.dll",
                 TestArchives.HashOf(content), content.Length));
 
         var act = async () => await _step.ExecuteAsync(
@@ -544,8 +566,9 @@ public class ExecuteExtensionsStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_ext", _hashCache);
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("local_ext", "missing.dll", "missing.dll",
+        var entry = MakeEntry("plugins/missing.dll",
+            MakeFromArchive("local_ext", "missing.dll",
+                "plugins/missing.dll",
                 TestArchives.HashOf(content), content.Length));
 
         var act = async () => await _step.ExecuteAsync(
@@ -587,8 +610,8 @@ public class ExecuteExtensionsStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_ext", _hashCache);
 
-        var entry = MakeEntry("ext",
-            MakeFromArchive("local_ext", "file.dll", "file.dll",
+        var entry = MakeEntry("plugins/file.dll",
+            MakeFromArchive("local_ext", "file.dll", "plugins/file.dll",
                 hash, content.Length));
 
         var input = MakeInput(new[] { entry },
@@ -599,7 +622,8 @@ public class ExecuteExtensionsStepTests : IDisposable
 
         first.Written.Should().ContainSingle();
         second.Written.Should().BeEmpty();
-        second.Skipped.Should().ContainSingle().Which.Should().Be("ext");
+        second.Skipped.Should().ContainSingle()
+            .Which.Should().Be("plugins/file.dll");
     }
 
     // ------------------------------------------------------------------
@@ -616,5 +640,328 @@ public class ExecuteExtensionsStepTests : IDisposable
             MakeInput(), cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: entry — папка (новые тесты из 41.2)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_PackageWithExtraFile_Recreated()
+    {
+        var contentA = Encoding.UTF8.GetBytes("BethINI.exe");
+        var contentB = Encoding.UTF8.GetBytes("old-readme.txt");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "bethini.zip",
+            ("BethINI/BethINI.exe", contentA));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_bethini", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_bethini",
+                "BethINI/BethINI.exe", "tools/BethINI/BethINI.exe",
+                TestArchives.HashOf(contentA), contentA.Length));
+
+        // На диске — состояние v1.0.
+        Directory.CreateDirectory(Mo2File("tools/BethINI"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/BethINI.exe"), contentA);
+        File.WriteAllBytes(Mo2File("tools/BethINI/old-readme.txt"), contentB);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle()
+            .Which.Should().Be("tools/BethINI");
+        output.Skipped.Should().BeEmpty();
+
+        File.Exists(Mo2File("tools/BethINI/old-readme.txt")).Should().BeFalse();
+        File.Exists(Mo2File("tools/BethINI/BethINI.exe")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Execute_PackageMatchesManifest_Skipped()
+    {
+        var contentA = Encoding.UTF8.GetBytes("BethINI.exe");
+        var contentB = Encoding.UTF8.GetBytes("readme");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "bethini.zip",
+            ("BethINI/BethINI.exe", contentA),
+            ("BethINI/readme.txt", contentB));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_bethini", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_bethini",
+                "BethINI/BethINI.exe", "tools/BethINI/BethINI.exe",
+                TestArchives.HashOf(contentA), contentA.Length),
+            MakeFromArchive("local_bethini",
+                "BethINI/readme.txt", "tools/BethINI/readme.txt",
+                TestArchives.HashOf(contentB), contentB.Length));
+
+        Directory.CreateDirectory(Mo2File("tools/BethINI"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/BethINI.exe"), contentA);
+        File.WriteAllBytes(Mo2File("tools/BethINI/readme.txt"), contentB);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle()
+            .Which.Should().Be("tools/BethINI");
+        output.Written.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Execute_PackageWithNestedExtraFile_Recreated()
+    {
+        var content = Encoding.UTF8.GetBytes("data");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "pkg.zip", ("BethINI/data.bin", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_pkg", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg",
+                "BethINI/data.bin", "tools/BethINI/data.bin",
+                TestArchives.HashOf(content), content.Length));
+
+        Directory.CreateDirectory(Mo2File("tools/BethINI/sub"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/data.bin"), content);
+        File.WriteAllBytes(Mo2File("tools/BethINI/sub/orphan.bin"),
+            Encoding.UTF8.GetBytes("orphan"));
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        File.Exists(Mo2File("tools/BethINI/sub/orphan.bin")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Execute_EmptySubdirOnDisk_NotRecreated()
+    {
+        var content = Encoding.UTF8.GetBytes("data");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "pkg.zip", ("BethINI/data.bin", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_pkg", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg",
+                "BethINI/data.bin", "tools/BethINI/data.bin",
+                TestArchives.HashOf(content), content.Length));
+
+        Directory.CreateDirectory(Mo2File("tools/BethINI/empty-subdir"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/data.bin"), content);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle();
+        output.Written.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Execute_PackageWithMissingFile_Recreated()
+    {
+        var contentA = Encoding.UTF8.GetBytes("a");
+        var contentB = Encoding.UTF8.GetBytes("b");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "pkg.zip",
+            ("BethINI/a.txt", contentA),
+            ("BethINI/b.txt", contentB));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_pkg", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg",
+                "BethINI/a.txt", "tools/BethINI/a.txt",
+                TestArchives.HashOf(contentA), contentA.Length),
+            MakeFromArchive("local_pkg",
+                "BethINI/b.txt", "tools/BethINI/b.txt",
+                TestArchives.HashOf(contentB), contentB.Length));
+
+        Directory.CreateDirectory(Mo2File("tools/BethINI"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/a.txt"), contentA);
+        // b.txt отсутствует.
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        File.Exists(Mo2File("tools/BethINI/b.txt")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Execute_PackageWithChangedFile_Recreated()
+    {
+        var expectedContent = Encoding.UTF8.GetBytes("expected");
+        var staleContent = Encoding.UTF8.GetBytes("stale!");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "pkg.zip", ("BethINI/a.txt", expectedContent));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_pkg", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg",
+                "BethINI/a.txt", "tools/BethINI/a.txt",
+                TestArchives.HashOf(expectedContent),
+                expectedContent.Length));
+
+        Directory.CreateDirectory(Mo2File("tools/BethINI"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/a.txt"), staleContent);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        TestArchives.ReadBytes(Mo2File("tools/BethINI/a.txt"))
+            .Should().Equal(expectedContent);
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: entry — файл (новые тесты из 41.2)
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_ReconcileFile_MatchesManifest_Skipped()
+    {
+        var content = Encoding.UTF8.GetBytes("fomod dll");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "ext.zip", ("fomod.dll", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_ext", _hashCache);
+
+        var entry = MakeEntry("plugins/fomod.dll",
+            MakeFromArchive("local_ext",
+                "fomod.dll", "plugins/fomod.dll",
+                TestArchives.HashOf(content), content.Length));
+
+        Directory.CreateDirectory(Mo2File("plugins"));
+        File.WriteAllBytes(Mo2File("plugins/fomod.dll"), content);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle();
+        output.Written.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Execute_ReconcileFile_Mismatch_Overwritten()
+    {
+        var expectedContent = Encoding.UTF8.GetBytes("expected");
+        var staleContent = Encoding.UTF8.GetBytes("stale");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "ext.zip", ("fomod.dll", expectedContent));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_ext", _hashCache);
+
+        var entry = MakeEntry("plugins/fomod.dll",
+            MakeFromArchive("local_ext",
+                "fomod.dll", "plugins/fomod.dll",
+                TestArchives.HashOf(expectedContent),
+                expectedContent.Length));
+
+        Directory.CreateDirectory(Mo2File("plugins"));
+        File.WriteAllBytes(Mo2File("plugins/fomod.dll"), staleContent);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        TestArchives.ReadBytes(Mo2File("plugins/fomod.dll"))
+            .Should().Equal(expectedContent);
+    }
+
+    // ------------------------------------------------------------------
+    //  Границы: соседние файлы не трогаются
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_RecreateEntry_DoesNotTouchSiblings()
+    {
+        var expectedContent = Encoding.UTF8.GetBytes("expected");
+        var siblingContent = Encoding.UTF8.GetBytes("sibling");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "pkg.zip",
+            ("BethINI/data.bin", expectedContent));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_pkg", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg",
+                "BethINI/data.bin", "tools/BethINI/data.bin",
+                TestArchives.HashOf(expectedContent),
+                expectedContent.Length));
+
+        Directory.CreateDirectory(Mo2File("tools/BethINI"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/data.bin"), expectedContent);
+        File.WriteAllBytes(Mo2File("tools/BethINI/orphan.txt"),
+            Encoding.UTF8.GetBytes("orphan"));
+        File.WriteAllBytes(Mo2File("tools/other.exe"), siblingContent);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+
+        File.Exists(Mo2File("tools/BethINI/orphan.txt")).Should().BeFalse();
+
+        File.Exists(Mo2File("tools/other.exe")).Should().BeTrue();
+        TestArchives.ReadBytes(Mo2File("tools/other.exe"))
+            .Should().Equal(siblingContent);
+    }
+
+    // ------------------------------------------------------------------
+    //  Идемпотентность после reconcile
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_SecondRunAfterReconcile_Skipped()
+    {
+        var content = Encoding.UTF8.GetBytes("data");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "pkg.zip", ("BethINI/data.bin", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_pkg", _hashCache);
+
+        var entry = MakeEntry("tools/BethINI",
+            MakeFromArchive("local_pkg",
+                "BethINI/data.bin", "tools/BethINI/data.bin",
+                TestArchives.HashOf(content), content.Length));
+
+        Directory.CreateDirectory(Mo2File("tools/BethINI"));
+        File.WriteAllBytes(Mo2File("tools/BethINI/data.bin"), content);
+        File.WriteAllBytes(Mo2File("tools/BethINI/orphan.txt"),
+            Encoding.UTF8.GetBytes("orphan"));
+
+        var input = MakeInput(new[] { entry },
+            MakeArchivesById(archiveEntry));
+
+        var first = await _step.ExecuteAsync(input, CancellationToken.None);
+        first.Written.Should().ContainSingle();
+
+        var second = await _step.ExecuteAsync(input, CancellationToken.None);
+        second.Skipped.Should().ContainSingle();
+        second.Written.Should().BeEmpty();
     }
 }

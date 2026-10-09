@@ -21,6 +21,28 @@ namespace Modsync.Install.Steps;
 ///
 /// Поддерживаются только FromArchive-директивы.
 ///
+/// Логика reconcile мода (Pass 1):
+///   - Папки нет → создать, разложить.
+///   - Папка есть → проверить ModMatchesManifest:
+///       * все директивы матчатся (файл есть, размер/hash совпал);
+///       * все файлы на диске в mods/&lt;Name&gt;/ упомянуты в директивной
+///         мапе по Destination (обратная проверка).
+///     Если что-то не совпало → recreate (Directory.Delete + заново).
+///     Если всё совпало → skip.
+///
+/// Обратная проверка ловит два сценария, которые раньше приводили
+/// к «файлам-призракам»:
+///   - файл удалён автором из манифеста, но остался на диске
+///     с прошлой версии сборки;
+///   - файл переехал из одного мода в другой: старый мод skip-ается,
+///     новый создаётся, файл дублируется.
+///
+/// Исключение из обратной проверки: корневой meta.ini
+/// (mods/&lt;Name&gt;/meta.ini). Он не в директивах — его пишет
+/// GenerateMetaIniStep, который идёт после SyncModsStep.
+/// meta.ini в подпапках (например, fomod/meta.ini) — обычный файл,
+/// должен быть в директивах.
+///
 /// Хеши файлов берутся через IHashCache (L1 + L2). Пути к файлам
 /// модов стабильны → L2 работает. При неизменённых файлах второй
 /// прогон install не читает их с диска.
@@ -35,6 +57,12 @@ public sealed class SyncModsStep : IStep<SyncModsStep.Input, SyncModsStep.Output
     private const string NoDeleteMarker = "[NoDelete]";
     private const char SeparatorPrefix = '#';
     private const int ProgressLogEvery = 50;
+
+    /// <summary>
+    /// Имя файла meta.ini в корне папки мода. Исключается из
+    /// обратной проверки: его пишет GenerateMetaIniStep.
+    /// </summary>
+    private const string MetaIniFileName = "meta.ini";
 
     private readonly IArchiveExtractor _extractor;
     private readonly IHashCache _hashCache;
@@ -184,7 +212,7 @@ public sealed class SyncModsStep : IStep<SyncModsStep.Input, SyncModsStep.Output
             return ModAction.Created;
         }
 
-        if (AllDirectivesMatch(mod, modDir, out var mismatchReason))
+        if (ModMatchesManifest(mod, modDir, out var mismatchReason))
         {
             _logger.LogDebug("Mod '{Name}': up to date", mod.Name);
             return ModAction.Skipped;
@@ -211,16 +239,37 @@ public sealed class SyncModsStep : IStep<SyncModsStep.Input, SyncModsStep.Output
         return ModAction.Recreated;
     }
 
-    private bool AllDirectivesMatch(
+    // ------------------------------------------------------------------
+    //  Проверка соответствия мода манифесту
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// true, если содержимое mods/&lt;Name&gt;/ полностью соответствует
+    /// манифесту: все директивы матчатся, и на диске нет файлов,
+    /// которых нет в директивах.
+    ///
+    /// Исключение из обратной проверки: корневой meta.ini.
+    /// </summary>
+    private bool ModMatchesManifest(
         ModEntry mod, string modDir, out string mismatchReason)
     {
+        // --- Прямая проверка: все директивы матчатся. ---
+        // Строим множество ожидаемых Destination'ов (относительных
+        // путей с прямыми слэшами) — пригодится для обратной проверки.
+        var expectedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var directive in mod.Directives)
         {
             if (directive is not FromArchiveDirective fromArchive)
             {
-                mismatchReason = $"unsupported directive type {directive.GetType().Name}";
+                mismatchReason =
+                    $"unsupported directive type {directive.GetType().Name}";
                 return false;
             }
+
+            var destination = fromArchive.Destination.Replace('\\', '/');
+
+            expectedFiles.Add(destination);
 
             var destPath = Path.Combine(
                 modDir,
@@ -245,6 +294,32 @@ public sealed class SyncModsStep : IStep<SyncModsStep.Input, SyncModsStep.Output
             if (actualHash != fromArchive.Hash)
             {
                 mismatchReason = $"hash mismatch on {fromArchive.Destination}";
+                return false;
+            }
+        }
+
+        // --- Обратная проверка: на диске нет лишних файлов. ---
+        // Обходим все файлы в mods/<Name>/ (рекурсивно). Каждый
+        // относительный путь должен быть в expectedFiles.
+        // Корневой meta.ini — исключение.
+        foreach (var diskFile in Directory.EnumerateFiles(
+            modDir, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path
+                .GetRelativePath(modDir, diskFile)
+                .Replace('\\', '/');
+
+            // Исключение: корневой meta.ini.
+            if (string.Equals(
+                    relative, MetaIniFileName,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!expectedFiles.Contains(relative))
+            {
+                mismatchReason = $"unexpected file on disk: {relative}";
                 return false;
             }
         }

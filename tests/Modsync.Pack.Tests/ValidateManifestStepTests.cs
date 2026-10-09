@@ -60,6 +60,30 @@ public class ValidateManifestStepTests
             Size = 100,
         };
 
+    /// <summary>
+    /// Перегрузка с явными Source и Destination (для тестов
+    /// валидации extension entries, где Name, Source и Destination
+    /// — разные строки).
+    /// </summary>
+    private static FromArchiveDirective MakeFromArchive(
+        string archive, string source, string destination)
+        => new()
+        {
+            Archive = archive,
+            Source = source,
+            Destination = destination,
+            Hash = new XxHash64Value(0xABCD),
+            Size = 100,
+        };
+
+    private static ExtensionEntry MakeExtensionEntry(
+        string name,
+        params Directive[] directives) => new()
+        {
+            Name = name,
+            Directives = directives,
+        };
+
     private static ModEntry MakeMod(
         string name,
         bool enabled = true,
@@ -107,6 +131,69 @@ public class ValidateManifestStepTests
             Mods = mods ?? Array.Empty<ModEntry>(),
             Plugins = plugins ?? Array.Empty<PluginEntry>(),
             Loadorder = loadorder ?? Array.Empty<string>(),
+        };
+
+    private static ModlistManifest MakeManifestWithExtensions(
+        IReadOnlyList<ExtensionEntry> extensions) => new()
+        {
+            SchemaVersion = "1.0.0",
+            ManifestVersion = "1.0.0",
+            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedBy = "modsyncmanager-pack/0.1.0",
+            Meta = new ManifestMeta
+            {
+                Name = "Test",
+                Version = "1.0.0",
+                Author = "tester",
+                Game = "skyrimspecialedition",
+                GameVersion = "1.6.1170",
+            },
+            Execution = new ExecutionPolicy(),
+            Mo2 = new Mo2Section
+            {
+                Version = "2.5.2",
+                Profile = "Default",
+                Archive = MakeMo2Archive(),
+                Extensions = extensions,
+            },
+            StockGame = new StockGameSection
+            {
+                Extras = Array.Empty<ExtensionEntry>(),
+            },
+            Archives = Array.Empty<ArchiveEntry>(),
+            Mods = Array.Empty<ModEntry>(),
+            Plugins = Array.Empty<PluginEntry>(),
+            Loadorder = Array.Empty<string>(),
+        };
+
+    private static ModlistManifest MakeManifestWithExtras(
+        IReadOnlyList<ExtensionEntry> extras) => new()
+        {
+            SchemaVersion = "1.0.0",
+            ManifestVersion = "1.0.0",
+            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedBy = "modsyncmanager-pack/0.1.0",
+            Meta = new ManifestMeta
+            {
+                Name = "Test",
+                Version = "1.0.0",
+                Author = "tester",
+                Game = "skyrimspecialedition",
+                GameVersion = "1.6.1170",
+            },
+            Execution = new ExecutionPolicy(),
+            Mo2 = new Mo2Section
+            {
+                Version = "2.5.2",
+                Profile = "Default",
+                Archive = MakeMo2Archive(),
+                Extensions = Array.Empty<ExtensionEntry>(),
+            },
+            StockGame = new StockGameSection { Extras = extras },
+            Archives = Array.Empty<ArchiveEntry>(),
+            Mods = Array.Empty<ModEntry>(),
+            Plugins = Array.Empty<PluginEntry>(),
+            Loadorder = Array.Empty<string>(),
         };
 
     // ------------------------------------------------------------------
@@ -344,5 +431,280 @@ public class ValidateManifestStepTests
         var ex = await act.Should().ThrowAsync<InvalidOperationException>();
         ex.Which.Message.Should().Contain("Duplicate archive id");
         ex.Which.Message.Should().Contain("does not exist in archives");
+    }
+
+    // ------------------------------------------------------------------
+    //  ValidateExtensionEntries: mo2.extensions[]
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Extensions_FileEntry_DestinationEqualsName_Passes()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_FolderEntry_AllDestinationsUnderPrefix_Passes()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe"),
+                MakeFromArchive("local_pkg", "readme.txt",
+                    "tools/BethINI/readme.txt")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_FolderEntry_DeepDestinationsUnderPrefix_Passes()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "sub/deep.bin",
+                    "tools/BethINI/sub/deep.bin")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_FolderEntry_DestinationOutside_Fails()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe"),
+                MakeFromArchive("local_pkg", "other.dll",
+                    "plugins/other.dll")),  // ← вне entry
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*plugins/other.dll*")
+            .WithMessage("*tools/BethINI*");
+    }
+
+    [Fact]
+    public async Task Extensions_FileEntry_DestinationIsSibling_Fails()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "other.dll",
+                    "plugins/other.dll")),  // ← не совпадает с Name
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*plugins/other.dll*");
+    }
+
+    [Fact]
+    public async Task Extensions_FileEntry_DestinationIsParentFolder_Fails()
+    {
+        // Destination — родитель entry (не совпадает, не начинается с prefix).
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll",
+                    "plugins")),  // ← не под entry
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
+    public async Task Extensions_BackslashInName_Normalized_Passes()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry(@"tools\BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_TrailingSlashInName_Normalized_Passes()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/BethINI/",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_BackslashInDestination_Normalized_Passes()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    @"tools\BethINI\BethINI.exe")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_CaseDifference_MatchesIgnoringCase()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "Tools/Bethini/BethINI.exe")),  // другой регистр
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_EmptyDirectives_NotValidated()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/Empty"),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_OnlyNonFromArchiveDirectives_NotValidated()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/Weird",
+                new CreateDirectoryDirective { Destination = "anywhere/" }),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_EmptyName_Fails()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*mo2.extensions[0].name must be non-empty*");
+    }
+
+    // ------------------------------------------------------------------
+    //  ValidateExtensionEntries: stockGame.extras[]
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Extras_FileEntry_DestinationEqualsName_Passes()
+    {
+        var manifest = MakeManifestWithExtras(new[]
+        {
+            MakeExtensionEntry("skse64_loader.exe",
+                MakeFromArchive("local_skse", "skse64_loader.exe",
+                    "skse64_loader.exe")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extras_FolderEntry_AllDestinationsUnderPrefix_Passes()
+    {
+        var manifest = MakeManifestWithExtras(new[]
+        {
+            MakeExtensionEntry("enbseries",
+                MakeFromArchive("local_enb", "enbseries.ini",
+                    "enbseries/enbseries.ini"),
+                MakeFromArchive("local_enb", "enblocal.ini",
+                    "enbseries/enblocal.ini")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extras_DestinationOutside_Fails()
+    {
+        var manifest = MakeManifestWithExtras(new[]
+        {
+            MakeExtensionEntry("enbseries",
+                MakeFromArchive("local_enb", "enbseries.ini",
+                    "enbseries/enbseries.ini"),
+                MakeFromArchive("local_enb", "sibling.dll",
+                    "sibling.dll")),  // ← вне entry
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*stockGame.extras[0]*")
+            .WithMessage("*sibling.dll*");
+    }
+
+    // ------------------------------------------------------------------
+    //  Множественные ошибки в extension entries
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Extensions_MultipleEntries_MultipleErrors()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "x.dll", "plugins/x.dll")),
+            MakeExtensionEntry("enbseries",
+                MakeFromArchive("local_enb", "y.dll", "other/y.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.Which.Message.Should().Contain("plugins/x.dll");
+        ex.Which.Message.Should().Contain("other/y.dll");
     }
 }

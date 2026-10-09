@@ -32,7 +32,6 @@ public class ExecuteExtrasStepTests : IDisposable
 
         Directory.CreateDirectory(_stockGamePath);
         Directory.CreateDirectory(_downloadsPath);
-        // MO2/ нужен, но этот шаг его не трогает.
         Directory.CreateDirectory(Path.Combine(_instanceDir, "MO2"));
 
         var extractor = new SevenZipExtractor(
@@ -159,7 +158,7 @@ public class ExecuteExtrasStepTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    //  2. Файла нет → Written
+    //  2. Entry-файл: файла нет → Written
     // ------------------------------------------------------------------
 
     [Fact]
@@ -173,7 +172,7 @@ public class ExecuteExtrasStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_skse", _hashCache);
 
-        var entry = MakeEntry("skse",
+        var entry = MakeEntry("skse64_loader.exe",
             MakeFromArchive("local_skse", "skse64_loader.exe",
                 "skse64_loader.exe", hash, content.Length));
 
@@ -181,14 +180,15 @@ public class ExecuteExtrasStepTests : IDisposable
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        output.Written.Should().ContainSingle().Which.Should().Be("skse");
+        output.Written.Should().ContainSingle()
+            .Which.Should().Be("skse64_loader.exe");
         File.Exists(StockFile("skse64_loader.exe")).Should().BeTrue();
         TestArchives.ReadBytes(StockFile("skse64_loader.exe"))
             .Should().Equal(content);
     }
 
     // ------------------------------------------------------------------
-    //  3. Файл есть, hash совпадает → Skipped
+    //  3. Entry-файл: файл есть, hash совпадает → Skipped
     // ------------------------------------------------------------------
 
     [Fact]
@@ -204,7 +204,7 @@ public class ExecuteExtrasStepTests : IDisposable
 
         File.WriteAllBytes(StockFile("d3d11.dll"), content);
 
-        var entry = MakeEntry("enb",
+        var entry = MakeEntry("d3d11.dll",
             MakeFromArchive("local_enb", "d3d11.dll",
                 "d3d11.dll", hash, content.Length));
 
@@ -213,11 +213,12 @@ public class ExecuteExtrasStepTests : IDisposable
             CancellationToken.None);
 
         output.Written.Should().BeEmpty();
-        output.Skipped.Should().ContainSingle().Which.Should().Be("enb");
+        output.Skipped.Should().ContainSingle()
+            .Which.Should().Be("d3d11.dll");
     }
 
     // ------------------------------------------------------------------
-    //  4. Файл есть, hash не тот → Written, перезаписан
+    //  4. Entry-файл: файл есть, hash не тот → Written, перезаписан
     // ------------------------------------------------------------------
 
     [Fact]
@@ -235,7 +236,7 @@ public class ExecuteExtrasStepTests : IDisposable
         File.WriteAllBytes(StockFile("d3d11.dll"),
             Encoding.UTF8.GetBytes("old enb d3d11.dll"));
 
-        var entry = MakeEntry("cs",
+        var entry = MakeEntry("d3d11.dll",
             MakeFromArchive("local_cs", "d3d11.dll",
                 "d3d11.dll", hash, content.Length));
 
@@ -248,11 +249,11 @@ public class ExecuteExtrasStepTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    //  5. Часть файлов совпадает → Written только за недостающие
+    //  5. Entry-папка: часть файлов совпадает → Written
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_PartialMatch_OnlyMissingCopied()
+    public async Task Execute_PackagePartialMatch_OnlyMissingCopied()
     {
         var content1 = Encoding.UTF8.GetBytes("skse64_loader.exe");
         var content2 = Encoding.UTF8.GetBytes("skse64_1_6_1170.dll");
@@ -264,32 +265,35 @@ public class ExecuteExtrasStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_skse", _hashCache);
 
-        // loader уже на месте, dll — нет.
-        File.WriteAllBytes(StockFile("skse64_loader.exe"), content1);
-
+        // Entry — папка skse с двумя файлами.
+        // На диске только loader, dll — нет.
         var entry = MakeEntry("skse",
             MakeFromArchive("local_skse", "skse64_loader.exe",
-                "skse64_loader.exe",
+                "skse/skse64_loader.exe",
                 TestArchives.HashOf(content1), content1.Length),
             MakeFromArchive("local_skse", "skse64_1_6_1170.dll",
-                "skse64_1_6_1170.dll",
+                "skse/skse64_1_6_1170.dll",
                 TestArchives.HashOf(content2), content2.Length));
+
+        // Кладём только loader.
+        Directory.CreateDirectory(StockFile("skse"));
+        File.WriteAllBytes(StockFile("skse/skse64_loader.exe"), content1);
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
         output.Written.Should().ContainSingle().Which.Should().Be("skse");
-        File.Exists(StockFile("skse64_loader.exe")).Should().BeTrue();
-        File.Exists(StockFile("skse64_1_6_1170.dll")).Should().BeTrue();
+        File.Exists(StockFile("skse/skse64_loader.exe")).Should().BeTrue();
+        File.Exists(StockFile("skse/skse64_1_6_1170.dll")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
-    //  6. Несколько entries → соответствующие Written/Skipped
+    //  6. Два entry — файл и папка
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_MultipleEntries_MixedWrittenSkipped()
+    public async Task Execute_TwoEntries_MixedWrittenSkipped()
     {
         var contentA = Encoding.UTF8.GetBytes("A");
         var contentB = Encoding.UTF8.GetBytes("B");
@@ -297,17 +301,20 @@ public class ExecuteExtrasStepTests : IDisposable
         var archivePath = TestArchives.CreateZip(
             _downloadsPath, "stuff.zip",
             ("a.exe", contentA),
-            ("b.dll", contentB));
+            ("b/dll.exe", contentB));
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_stuff", _hashCache);
 
+        // Entry-файл: a.exe уже на месте.
         File.WriteAllBytes(StockFile("a.exe"), contentA);
 
-        var entryA = MakeEntry("stuff-a",
+        var entryA = MakeEntry("a.exe",
             MakeFromArchive("local_stuff", "a.exe", "a.exe",
                 TestArchives.HashOf(contentA), contentA.Length));
-        var entryB = MakeEntry("stuff-b",
-            MakeFromArchive("local_stuff", "b.dll", "b.dll",
+
+        // Entry-папка: b — нет на диске.
+        var entryB = MakeEntry("b",
+            MakeFromArchive("local_stuff", "b/dll.exe", "b/dll.exe",
                 TestArchives.HashOf(contentB), contentB.Length));
 
         var output = await _step.ExecuteAsync(
@@ -315,16 +322,16 @@ public class ExecuteExtrasStepTests : IDisposable
                 MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        output.Written.Should().ContainSingle().Which.Should().Be("stuff-b");
-        output.Skipped.Should().ContainSingle().Which.Should().Be("stuff-a");
+        output.Written.Should().ContainSingle().Which.Should().Be("b");
+        output.Skipped.Should().ContainSingle().Which.Should().Be("a.exe");
     }
 
     // ------------------------------------------------------------------
-    //  7. Destination с подпапкой → папки создаются
+    //  7. Entry-папка: destination с подпапкой → папки создаются
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_DestinationWithSubdir_CreatesFolders()
+    public async Task Execute_PackageWithSubdir_CreatesFolders()
     {
         var content = Encoding.UTF8.GetBytes("enb settings");
         var hash = TestArchives.HashOf(content);
@@ -335,7 +342,7 @@ public class ExecuteExtrasStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_enb", _hashCache);
 
-        var entry = MakeEntry("enb",
+        var entry = MakeEntry("enbseries",
             MakeFromArchive("local_enb", "enbseries/enblocal.ini",
                 "enbseries/enblocal.ini", hash, content.Length));
 
@@ -348,30 +355,30 @@ public class ExecuteExtrasStepTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    //  8. Forward slashes в Destination
+    //  8. Entry-файл: Destination с подпапкой
     // ------------------------------------------------------------------
 
     [Fact]
-    public async Task Execute_DestinationForwardSlashes_Handled()
+    public async Task Execute_FileWithSubdirPath_CreatesParentDir()
     {
         var content = Encoding.UTF8.GetBytes("deep");
         var hash = TestArchives.HashOf(content);
 
         var archivePath = TestArchives.CreateZip(
             _downloadsPath, "enb.zip",
-            ("enbseries/patches/deep.ini", content));
+            ("enbseries/deep.ini", content));
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_enb", _hashCache);
 
-        var entry = MakeEntry("enb",
-            MakeFromArchive("local_enb", "enbseries/patches/deep.ini",
-                "enbseries/patches/deep.ini", hash, content.Length));
+        var entry = MakeEntry("enbseries/deep.ini",
+            MakeFromArchive("local_enb", "enbseries/deep.ini",
+                "enbseries/deep.ini", hash, content.Length));
 
         await _step.ExecuteAsync(
             MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
             CancellationToken.None);
 
-        File.Exists(StockFile("enbseries/patches/deep.ini")).Should().BeTrue();
+        File.Exists(StockFile("enbseries/deep.ini")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
@@ -381,13 +388,13 @@ public class ExecuteExtrasStepTests : IDisposable
     [Fact]
     public async Task Execute_EntryWithNoDirectives_Skipped()
     {
-        var entry = MakeEntry("empty");
+        var entry = MakeEntry("empty.exe");
 
         var output = await _step.ExecuteAsync(
             MakeInput(new[] { entry }), CancellationToken.None);
 
         output.Written.Should().BeEmpty();
-        output.Skipped.Should().ContainSingle().Which.Should().Be("empty");
+        output.Skipped.Should().ContainSingle().Which.Should().Be("empty.exe");
     }
 
     // ------------------------------------------------------------------
@@ -408,7 +415,7 @@ public class ExecuteExtrasStepTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    //  11. Две директивы из одного архива
+    //  11. Entry-папка: две директивы из одного архива
     // ------------------------------------------------------------------
 
     [Fact]
@@ -424,12 +431,13 @@ public class ExecuteExtrasStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_skse", _hashCache);
 
+        // Entry — папка skse (обе директивы внутри неё).
         var entry = MakeEntry("skse",
             MakeFromArchive("local_skse", "skse64_loader.exe",
-                "skse64_loader.exe",
+                "skse/skse64_loader.exe",
                 TestArchives.HashOf(content1), content1.Length),
             MakeFromArchive("local_skse", "skse64_1_6_1170.dll",
-                "skse64_1_6_1170.dll",
+                "skse/skse64_1_6_1170.dll",
                 TestArchives.HashOf(content2), content2.Length));
 
         var output = await _step.ExecuteAsync(
@@ -437,12 +445,12 @@ public class ExecuteExtrasStepTests : IDisposable
             CancellationToken.None);
 
         output.Written.Should().ContainSingle();
-        File.Exists(StockFile("skse64_loader.exe")).Should().BeTrue();
-        File.Exists(StockFile("skse64_1_6_1170.dll")).Should().BeTrue();
+        File.Exists(StockFile("skse/skse64_loader.exe")).Should().BeTrue();
+        File.Exists(StockFile("skse/skse64_1_6_1170.dll")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
-    //  12. Две директивы из разных архивов
+    //  12. Entry-папка: две директивы из разных архивов
     // ------------------------------------------------------------------
 
     [Fact]
@@ -461,10 +469,10 @@ public class ExecuteExtrasStepTests : IDisposable
         var entryB = TestArchives.MakeArchiveEntry(
             archiveB, "local_b", _hashCache);
 
-        var entry = MakeEntry("pair",
-            MakeFromArchive("local_a", "a.exe", "a.exe",
+        var entry = MakeEntry("mixed",
+            MakeFromArchive("local_a", "a.exe", "mixed/a.exe",
                 TestArchives.HashOf(contentA), contentA.Length),
-            MakeFromArchive("local_b", "b.dll", "b.dll",
+            MakeFromArchive("local_b", "b.dll", "mixed/b.dll",
                 TestArchives.HashOf(contentB), contentB.Length));
 
         var output = await _step.ExecuteAsync(
@@ -472,12 +480,12 @@ public class ExecuteExtrasStepTests : IDisposable
             CancellationToken.None);
 
         output.Written.Should().ContainSingle();
-        File.Exists(StockFile("a.exe")).Should().BeTrue();
-        File.Exists(StockFile("b.dll")).Should().BeTrue();
+        File.Exists(StockFile("mixed/a.exe")).Should().BeTrue();
+        File.Exists(StockFile("mixed/b.dll")).Should().BeTrue();
     }
 
     // ------------------------------------------------------------------
-    //  13. archiveId не найден в map
+    //  13. ArchiveId не найден в map
     // ------------------------------------------------------------------
 
     [Fact]
@@ -485,7 +493,7 @@ public class ExecuteExtrasStepTests : IDisposable
     {
         var content = Encoding.UTF8.GetBytes("x");
 
-        var entry = MakeEntry("skse",
+        var entry = MakeEntry("skse64_loader.exe",
             MakeFromArchive("nonexistent", "skse64_loader.exe",
                 "skse64_loader.exe",
                 TestArchives.HashOf(content), content.Length));
@@ -516,7 +524,7 @@ public class ExecuteExtrasStepTests : IDisposable
                 Core.Models.Manifest.Sources.ArchiveSourceRef>(),
         };
 
-        var entry = MakeEntry("skse",
+        var entry = MakeEntry("skse64_loader.exe",
             MakeFromArchive("local_fake", "skse64_loader.exe",
                 "skse64_loader.exe",
                 TestArchives.HashOf(content), content.Length));
@@ -544,7 +552,7 @@ public class ExecuteExtrasStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_skse", _hashCache);
 
-        var entry = MakeEntry("skse",
+        var entry = MakeEntry("skse64_1_6_1170.dll",
             MakeFromArchive("local_skse", "skse64_1_6_1170.dll",
                 "skse64_1_6_1170.dll",
                 TestArchives.HashOf(content), content.Length));
@@ -588,7 +596,7 @@ public class ExecuteExtrasStepTests : IDisposable
         var archiveEntry = TestArchives.MakeArchiveEntry(
             archivePath, "local_skse", _hashCache);
 
-        var entry = MakeEntry("skse",
+        var entry = MakeEntry("skse64_loader.exe",
             MakeFromArchive("local_skse", "skse64_loader.exe",
                 "skse64_loader.exe", hash, content.Length));
 
@@ -600,7 +608,8 @@ public class ExecuteExtrasStepTests : IDisposable
 
         first.Written.Should().ContainSingle();
         second.Written.Should().BeEmpty();
-        second.Skipped.Should().ContainSingle().Which.Should().Be("skse");
+        second.Skipped.Should().ContainSingle()
+            .Which.Should().Be("skse64_loader.exe");
     }
 
     // ------------------------------------------------------------------
@@ -617,5 +626,328 @@ public class ExecuteExtrasStepTests : IDisposable
             MakeInput(), cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: entry — папка
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_PackageWithExtraFile_Recreated()
+    {
+        var contentA = Encoding.UTF8.GetBytes("enblocal");
+        var contentB = Encoding.UTF8.GetBytes("old-enb");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/enblocal.ini", contentA));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/enblocal.ini", "enbseries/enblocal.ini",
+                TestArchives.HashOf(contentA), contentA.Length));
+
+        // На диске — лишний файл.
+        Directory.CreateDirectory(StockFile("enbseries"));
+        File.WriteAllBytes(StockFile("enbseries/enblocal.ini"), contentA);
+        File.WriteAllBytes(StockFile("enbseries/old-enb.ini"), contentB);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle()
+            .Which.Should().Be("enbseries");
+        output.Skipped.Should().BeEmpty();
+
+        File.Exists(StockFile("enbseries/old-enb.ini")).Should().BeFalse();
+        File.Exists(StockFile("enbseries/enblocal.ini")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Execute_PackageMatchesManifest_Skipped()
+    {
+        var contentA = Encoding.UTF8.GetBytes("enblocal");
+        var contentB = Encoding.UTF8.GetBytes("enbseries");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/enblocal.ini", contentA),
+            ("enbseries/enbseries.ini", contentB));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/enblocal.ini", "enbseries/enblocal.ini",
+                TestArchives.HashOf(contentA), contentA.Length),
+            MakeFromArchive("local_enb",
+                "enbseries/enbseries.ini", "enbseries/enbseries.ini",
+                TestArchives.HashOf(contentB), contentB.Length));
+
+        Directory.CreateDirectory(StockFile("enbseries"));
+        File.WriteAllBytes(StockFile("enbseries/enblocal.ini"), contentA);
+        File.WriteAllBytes(StockFile("enbseries/enbseries.ini"), contentB);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle().Which.Should().Be("enbseries");
+        output.Written.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Execute_PackageWithNestedExtraFile_Recreated()
+    {
+        var content = Encoding.UTF8.GetBytes("data");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/data.bin", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/data.bin", "enbseries/data.bin",
+                TestArchives.HashOf(content), content.Length));
+
+        Directory.CreateDirectory(StockFile("enbseries/sub"));
+        File.WriteAllBytes(StockFile("enbseries/data.bin"), content);
+        File.WriteAllBytes(StockFile("enbseries/sub/orphan.bin"),
+            Encoding.UTF8.GetBytes("orphan"));
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        File.Exists(StockFile("enbseries/sub/orphan.bin")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Execute_EmptySubdirOnDisk_NotRecreated()
+    {
+        var content = Encoding.UTF8.GetBytes("data");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/data.bin", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/data.bin", "enbseries/data.bin",
+                TestArchives.HashOf(content), content.Length));
+
+        Directory.CreateDirectory(StockFile("enbseries/empty-subdir"));
+        File.WriteAllBytes(StockFile("enbseries/data.bin"), content);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle();
+        output.Written.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Execute_PackageWithMissingFile_Recreated()
+    {
+        var contentA = Encoding.UTF8.GetBytes("a");
+        var contentB = Encoding.UTF8.GetBytes("b");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/a.txt", contentA),
+            ("enbseries/b.txt", contentB));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/a.txt", "enbseries/a.txt",
+                TestArchives.HashOf(contentA), contentA.Length),
+            MakeFromArchive("local_enb",
+                "enbseries/b.txt", "enbseries/b.txt",
+                TestArchives.HashOf(contentB), contentB.Length));
+
+        Directory.CreateDirectory(StockFile("enbseries"));
+        File.WriteAllBytes(StockFile("enbseries/a.txt"), contentA);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        File.Exists(StockFile("enbseries/b.txt")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Execute_PackageWithChangedFile_Recreated()
+    {
+        var expectedContent = Encoding.UTF8.GetBytes("expected");
+        var staleContent = Encoding.UTF8.GetBytes("stale!");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/a.txt", expectedContent));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/a.txt", "enbseries/a.txt",
+                TestArchives.HashOf(expectedContent),
+                expectedContent.Length));
+
+        Directory.CreateDirectory(StockFile("enbseries"));
+        File.WriteAllBytes(StockFile("enbseries/a.txt"), staleContent);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        TestArchives.ReadBytes(StockFile("enbseries/a.txt"))
+            .Should().Equal(expectedContent);
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: entry — файл
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_ReconcileFile_MatchesManifest_Skipped()
+    {
+        var content = Encoding.UTF8.GetBytes("skse loader");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "skse.zip", ("skse64_loader.exe", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_skse", _hashCache);
+
+        var entry = MakeEntry("skse64_loader.exe",
+            MakeFromArchive("local_skse",
+                "skse64_loader.exe", "skse64_loader.exe",
+                TestArchives.HashOf(content), content.Length));
+
+        File.WriteAllBytes(StockFile("skse64_loader.exe"), content);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Skipped.Should().ContainSingle();
+        output.Written.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Execute_ReconcileFile_Mismatch_Overwritten()
+    {
+        var expectedContent = Encoding.UTF8.GetBytes("expected");
+        var staleContent = Encoding.UTF8.GetBytes("stale");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "skse.zip", ("skse64_loader.exe", expectedContent));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_skse", _hashCache);
+
+        var entry = MakeEntry("skse64_loader.exe",
+            MakeFromArchive("local_skse",
+                "skse64_loader.exe", "skse64_loader.exe",
+                TestArchives.HashOf(expectedContent),
+                expectedContent.Length));
+
+        File.WriteAllBytes(StockFile("skse64_loader.exe"), staleContent);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+        TestArchives.ReadBytes(StockFile("skse64_loader.exe"))
+            .Should().Equal(expectedContent);
+    }
+
+    // ------------------------------------------------------------------
+    //  Границы: соседние файлы не трогаются
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_RecreateEntry_DoesNotTouchSiblings()
+    {
+        var expectedContent = Encoding.UTF8.GetBytes("expected");
+        var siblingContent = Encoding.UTF8.GetBytes("sibling");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/data.bin", expectedContent));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/data.bin", "enbseries/data.bin",
+                TestArchives.HashOf(expectedContent),
+                expectedContent.Length));
+
+        Directory.CreateDirectory(StockFile("enbseries"));
+        File.WriteAllBytes(StockFile("enbseries/data.bin"), expectedContent);
+        File.WriteAllBytes(StockFile("enbseries/orphan.txt"),
+            Encoding.UTF8.GetBytes("orphan"));
+        // Соседний файл вне entry — как будто часть игры.
+        File.WriteAllBytes(StockFile("SkyrimSE.exe"), siblingContent);
+
+        var output = await _step.ExecuteAsync(
+            MakeInput(new[] { entry }, MakeArchivesById(archiveEntry)),
+            CancellationToken.None);
+
+        output.Written.Should().ContainSingle();
+
+        File.Exists(StockFile("enbseries/orphan.txt")).Should().BeFalse();
+        File.Exists(StockFile("SkyrimSE.exe")).Should().BeTrue();
+        TestArchives.ReadBytes(StockFile("SkyrimSE.exe"))
+            .Should().Equal(siblingContent);
+    }
+
+    // ------------------------------------------------------------------
+    //  Идемпотентность после reconcile
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Execute_SecondRunAfterReconcile_Skipped()
+    {
+        var content = Encoding.UTF8.GetBytes("data");
+
+        var archivePath = TestArchives.CreateZip(
+            _downloadsPath, "enb.zip",
+            ("enbseries/data.bin", content));
+        var archiveEntry = TestArchives.MakeArchiveEntry(
+            archivePath, "local_enb", _hashCache);
+
+        var entry = MakeEntry("enbseries",
+            MakeFromArchive("local_enb",
+                "enbseries/data.bin", "enbseries/data.bin",
+                TestArchives.HashOf(content), content.Length));
+
+        Directory.CreateDirectory(StockFile("enbseries"));
+        File.WriteAllBytes(StockFile("enbseries/data.bin"), content);
+        File.WriteAllBytes(StockFile("enbseries/orphan.txt"),
+            Encoding.UTF8.GetBytes("orphan"));
+
+        var input = MakeInput(new[] { entry },
+            MakeArchivesById(archiveEntry));
+
+        var first = await _step.ExecuteAsync(input, CancellationToken.None);
+        first.Written.Should().ContainSingle();
+
+        var second = await _step.ExecuteAsync(input, CancellationToken.None);
+        second.Skipped.Should().ContainSingle();
+        second.Written.Should().BeEmpty();
     }
 }

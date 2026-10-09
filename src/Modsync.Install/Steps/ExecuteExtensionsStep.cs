@@ -17,22 +17,37 @@ namespace Modsync.Install.Steps;
 ///   (mods/&lt;ModName&gt;/) и не являются самим MO2-дистрибутивом.
 ///   Например: MO2/plugins/fomod_plus_installer.dll, MO2/tools/BethINI/.
 ///   В manifest.Mo2.Extensions[] они описаны как ExtensionEntry:
-///     Name       — идентификатор (для логов),
+///     Name       — идентификатор (нормализованный relative path от MO2/,
+///                  без trailing slash): "plugins/fomod.dll" или
+///                  "tools/BethINI",
 ///     Directives — FromArchive-директивы с Destination ОТНОСИТЕЛЬНО
 ///                  корня MO2/ (не относительно mods/).
 ///
-/// Логика:
-///   1. Проверить, что &lt;target&gt;/MO2/ существует.
-///   2. Для каждого entry:
-///        - сгруппировать директивы по archiveId;
-///        - распаковать архив во временную папку (один раз на архив);
-///        - для каждой директивы: hash-match → skip, иначе copy.
-///   3. Вернуть Written / Skipped.
+/// Логика для каждой entry:
+///   1. Резолвим absolutePath = mo2Path / Name.
+///   2. Если absolutePath — папка:
+///        - собрать множество ожидаемых файлов из директив entry;
+///        - проверить, что все они на диске и совпадают (прямая);
+///        - проверить, что все файлы внутри папки — в множестве
+///          (обратная, reconcile);
+///        - если что-то не совпало → удалить папку целиком и заново;
+///        - если всё совпало → Skipped.
+///   3. Если absolutePath — файл:
+///        - проверить hash/size; если совпал → Skipped;
+///        - если нет → перезаписать.
+///   4. Если ничего нет → разложить с нуля (Written).
+///
+/// Границы reconcile — только внутри entry. MO2/ содержит
+/// дистрибутив MO2 (ModOrganizer.exe, styles/, web/, languages/,
+/// dlls/, NCC/, ...). Мы не трогаем ничего вне entry из
+/// config.mo2.extensions[].
+///
+/// При recreate удаляется папка entry (например, tools/BethINI/).
+/// tools/ и соседние файлы не трогаются.
 ///
 /// Чего НЕ делает:
-///   - не reconcile (нет modlist.txt, не с чем сверять «лишнее»);
-///   - не удаляет ничего;
-///   - не пишет meta.ini;
+///   - не reconcile-ит ничего вне границ entry;
+///   - не пишет meta.ini (у extensions его нет);
 ///   - не трогает mods/;
 ///   - не трогает Stock Game/.
 ///
@@ -62,7 +77,6 @@ public sealed class ExecuteExtensionsStep
 
         if (!Directory.Exists(mo2Path))
         {
-            // Контракт: BootstrapInstanceStep создал MO2/ до нас.
             throw new DirectoryNotFoundException(
                 $"MO2/ not found in instance: {mo2Path}. " +
                 $"BootstrapInstanceStep should have created it. " +
@@ -141,12 +155,240 @@ public sealed class ExecuteExtensionsStep
             return EntryAction.Skipped;
         }
 
-        // Группируем по archiveId: один архив — одно распаковывание.
+        // Нормализуем entry.Name и резолвим absolutePath.
+        var normalizedEntry = entry.Name
+            .Replace('\\', '/')
+            .TrimEnd('/');
+
+        var absolutePath = Path.Combine(
+            mo2Path,
+            normalizedEntry.Replace('/', Path.DirectorySeparatorChar));
+
+        // --- Определяем, что на диске ---
+        if (Directory.Exists(absolutePath))
+        {
+            // Entry — папка. Reconcile.
+            if (DirectoryMatchesManifest(entry, absolutePath, out var reason))
+            {
+                _logger.LogDebug(
+                    "MO2 extension '{Name}': up to date",
+                    entry.Name);
+                return EntryAction.Skipped;
+            }
+
+            _logger.LogInformation(
+                "MO2 extension '{Name}': recreating ({Reason})",
+                entry.Name, reason);
+
+            try
+            {
+                Directory.Delete(absolutePath, recursive: true);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to delete MO2 extension folder '{absolutePath}' " +
+                    $"before recreating: {ex.Message}. " +
+                    $"Close Mod Organizer / game if running.", ex);
+            }
+
+            Directory.CreateDirectory(absolutePath);
+
+            await ExtractEntryAsync(
+                entry, fromArchive, mo2Path, archivesById, downloadsPath, ct);
+
+            return EntryAction.Written;
+        }
+
+        if (File.Exists(absolutePath))
+        {
+            // Entry — файл. Проверяем одну директиву.
+            // Ожидается ровно одна FromArchive-директива с Destination,
+            // совпадающим с entry.Name.
+            var directive = fromArchive.FirstOrDefault(d =>
+                string.Equals(
+                    d.Destination.Replace('\\', '/').TrimStart('/'),
+                    normalizedEntry,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (directive is null)
+            {
+                // Странная ситуация: на диске файл по пути entry.Name,
+                // но в директивах нет соответствующей записи.
+                // Это значит, что entry.Name совпадает с другим
+                // Destination — маловероятно, но возможно.
+                // Считаем mismatch, перезапишем.
+                _logger.LogWarning(
+                    "MO2 extension '{Name}': file exists on disk but " +
+                    "no matching directive — recreating",
+                    entry.Name);
+
+                try
+                {
+                    File.Delete(absolutePath);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to delete MO2 extension file " +
+                        $"'{absolutePath}': {ex.Message}. " +
+                        $"Close Mod Organizer / game if running.", ex);
+                }
+
+                await ExtractEntryAsync(
+                    entry, fromArchive, mo2Path, archivesById, downloadsPath, ct);
+
+                return EntryAction.Written;
+            }
+
+            if (FileMatches(absolutePath, directive.Hash, directive.Size))
+            {
+                _logger.LogDebug(
+                    "MO2 extension '{Name}': up to date",
+                    entry.Name);
+                return EntryAction.Skipped;
+            }
+
+            _logger.LogDebug(
+                "MO2 extension '{Name}': file mismatch — overwriting",
+                entry.Name);
+
+            await ExtractEntryAsync(
+                entry, fromArchive, mo2Path, archivesById, downloadsPath, ct);
+
+            return EntryAction.Written;
+        }
+
+        // Ни файла, ни папки — раскладываем с нуля.
+        _logger.LogDebug(
+            "MO2 extension '{Name}': creating",
+            entry.Name);
+
+        await ExtractEntryAsync(
+            entry, fromArchive, mo2Path, archivesById, downloadsPath, ct);
+
+        return EntryAction.Written;
+    }
+
+    // ------------------------------------------------------------------
+    //  Reconcile: сравнение папки с манифестом
+    // ------------------------------------------------------------------
+
+    /// <summary>
+    /// true, если содержимое папки entry полностью соответствует
+    /// директивам entry: все директивы матчатся (прямая), и на диске
+    /// нет файлов, которых нет в директивах (обратная).
+    /// </summary>
+    private static bool DirectoryMatchesManifest(
+        ExtensionEntry entry, string absolutePath, out string mismatchReason)
+    {
+        var expectedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var directive in entry.Directives)
+        {
+            if (directive is not FromArchiveDirective fromArchive)
+            {
+                mismatchReason =
+                    $"unsupported directive type {directive.GetType().Name}";
+                return false;
+            }
+
+            var relative = fromArchive.Destination
+                .Replace('\\', '/')
+                .TrimStart('/');
+
+            expectedFiles.Add(relative);
+
+            var destPath = Path.Combine(
+                absolutePath,
+                // Destination относительно MO2/. Внутри entry-папки
+                // это Destination минус entry.Name + "/".
+                TrimEntryPrefix(relative, entry.Name));
+
+            if (!File.Exists(destPath))
+            {
+                mismatchReason = $"missing {fromArchive.Destination}";
+                return false;
+            }
+
+            var info = new FileInfo(destPath);
+            if (info.Length != fromArchive.Size)
+            {
+                mismatchReason =
+                    $"size mismatch on {fromArchive.Destination} " +
+                    $"(expected {fromArchive.Size}, got {info.Length})";
+                return false;
+            }
+
+            var actualHash = Core.Models.Hashing.XxHash64Value.FromFile(destPath);
+            if (actualHash != fromArchive.Hash)
+            {
+                mismatchReason = $"hash mismatch on {fromArchive.Destination}";
+                return false;
+            }
+        }
+
+        // Обратная проверка: все файлы внутри папки — в expectedFiles.
+        foreach (var diskFile in Directory.EnumerateFiles(
+            absolutePath, "*", SearchOption.AllDirectories))
+        {
+            var relativeInsideEntry = Path
+                .GetRelativePath(absolutePath, diskFile)
+                .Replace('\\', '/');
+
+            // Полный relative от MO2/.
+            var normalizedEntry = entry.Name
+                .Replace('\\', '/')
+                .TrimEnd('/');
+
+            var fullRelative = normalizedEntry + "/" + relativeInsideEntry;
+
+            if (!expectedFiles.Contains(fullRelative))
+            {
+                mismatchReason =
+                    $"unexpected file on disk: {fullRelative}";
+                return false;
+            }
+        }
+
+        mismatchReason = "";
+        return true;
+    }
+
+    /// <summary>
+    /// Обрезает у relative-пути префикс entry.Name + "/".
+    /// Если префикса нет (директива Destination == entry.Name,
+    /// entry — файл, но папку мы не сюда попадём) — возвращает
+    /// relative как есть.
+    /// </summary>
+    private static string TrimEntryPrefix(string relative, string entryName)
+    {
+        var normalizedEntry = entryName
+            .Replace('\\', '/')
+            .TrimEnd('/');
+
+        var prefix = normalizedEntry + "/";
+        if (relative.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            return relative[prefix.Length..];
+
+        return relative;
+    }
+
+    // ------------------------------------------------------------------
+    //  Раскладка файлов entry
+    // ------------------------------------------------------------------
+
+    private async Task ExtractEntryAsync(
+        ExtensionEntry entry,
+        IReadOnlyList<FromArchiveDirective> fromArchive,
+        string mo2Path,
+        IReadOnlyDictionary<string, ArchiveEntry> archivesById,
+        string downloadsPath,
+        CancellationToken ct)
+    {
         var byArchive = fromArchive
             .GroupBy(d => d.Archive, StringComparer.Ordinal)
             .ToList();
-
-        bool anyWritten = false;
 
         using var workspace = new TempWorkspace();
 
@@ -176,7 +418,8 @@ public sealed class ExecuteExtensionsStep
                     archivePath);
             }
 
-            var extractSubdir = Path.Combine(workspace.Path, SanitizeDirName(archiveId));
+            var extractSubdir = Path.Combine(
+                workspace.Path, SanitizeDirName(archiveId));
             Directory.CreateDirectory(extractSubdir);
 
             var extractedFiles = await _extractor.ExtractAsync(
@@ -206,28 +449,17 @@ public sealed class ExecuteExtensionsStep
                     mo2Path,
                     directive.Destination.Replace('/', Path.DirectorySeparatorChar));
 
-                if (FileMatches(destPath, directive.Hash, directive.Size))
-                {
-                    _logger.LogDebug(
-                        "MO2 extension '{Name}': up to date ({Dest})",
-                        entry.Name, directive.Destination);
-                    continue;
-                }
-
                 var destDir = Path.GetDirectoryName(destPath);
                 if (!string.IsNullOrEmpty(destDir))
                     Directory.CreateDirectory(destDir);
 
                 File.Copy(sourcePath, destPath, overwrite: true);
-                anyWritten = true;
 
                 _logger.LogDebug(
                     "MO2 extension '{Name}': wrote {Dest}",
                     entry.Name, directive.Destination);
             }
         }
-
-        return anyWritten ? EntryAction.Written : EntryAction.Skipped;
     }
 
     // ------------------------------------------------------------------
@@ -250,11 +482,6 @@ public sealed class ExecuteExtensionsStep
         return actualHash == expectedHash;
     }
 
-    /// <summary>
-    /// archiveId может содержать символы, невалидные для имени папки
-    /// (например, "nexus_skyrimspecialedition_3863_1000" — валидно,
-    /// но на всякий случай подчистим).
-    /// </summary>
     private static string SanitizeDirName(string raw)
     {
         var invalid = Path.GetInvalidFileNameChars();

@@ -18,10 +18,21 @@ namespace Modsync.Gui.Shared.Logging;
 /// гарантирует FIFO-порядок обработки в UI-очереди.
 ///
 /// Хранится последние MaxEntries записей; старые вытесняются.
+///
+/// MaxEntries = 1000. Было 200 — на длинных прогонах
+/// pack+install+verify с диагностикой unmatched в MatchStep
+/// 200 записей переполнялись мгновенно, пользователь видел
+/// только хвост лога.
+///
+/// Почему не «без лимита»: ObservableCollection.Add/RemoveAt
+/// на больших объёмах замедляют логгер, а ItemsControl без
+/// виртуализации рисует все элементы. 1000 — компромисс,
+/// достаточный для типичного прогона. Если окажется мало —
+/// отдельный блок про виртуализацию UI + безлимит.
 /// </summary>
 public sealed class ObservableLogSink
 {
-    private const int MaxEntries = 200;
+    private const int MaxEntries = 1000;
     private readonly object _lock = new();
     private readonly IUiDispatcher? _dispatcher;
 
