@@ -24,6 +24,8 @@ namespace Modsync.Pack.Steps;
 ///  6. loadorder: без дубликатов.
 ///  7. mo2.extensions[] и stockGame.extras[]: entry.Name — префикс
 ///     для Destination всех FromArchive-директив entry.
+///  8. mo2.extensions[] и stockGame.extras[]: entries не пересекаются
+///     (никакая пара не является префиксом друг друга).
 /// </summary>
 public sealed class ValidateManifestStep : IStep<ModlistManifest, ModlistManifest>
 {
@@ -56,6 +58,14 @@ public sealed class ValidateManifestStep : IStep<ModlistManifest, ModlistManifes
             input.StockGame.Extras,
             "stockGame.extras",
             errors);
+        ValidateNoOverlap(
+            input.Mo2.Extensions,
+            "mo2.extensions",
+            errors);
+        ValidateNoOverlap(
+            input.StockGame.Extras,
+            "stockGame.extras",
+            errors);
 
         if (errors.Count > 0)
         {
@@ -67,7 +77,7 @@ public sealed class ValidateManifestStep : IStep<ModlistManifest, ModlistManifes
         }
 
         int directiveCount = input.Mods.Sum(m => m.Directives.Count);
-        int archiveCount = input.Archives.Count + 1;  // +1 = mo2.archive
+        int archiveCount = input.Archives.Count + 1;
         int extEntries = input.Mo2.Extensions.Count;
         int xstEntries = input.StockGame.Extras.Count;
 
@@ -103,7 +113,6 @@ public sealed class ValidateManifestStep : IStep<ModlistManifest, ModlistManifes
             }
         }
 
-        // mo2.archive участвует в той же области id, что и archives[].
         if (!string.IsNullOrWhiteSpace(manifest.Mo2.Archive.Id))
         {
             if (!seen.Add(manifest.Mo2.Archive.Id))
@@ -225,19 +234,8 @@ public sealed class ValidateManifestStep : IStep<ModlistManifest, ModlistManifes
     /// Проверяет, что для каждого ExtensionEntry его Name — префикс
     /// для Destination всех FromArchive-директив.
     ///
-    /// Условие для одной директивы:
-    ///   normalizedDest == normalizedName
-    ///   OR
-    ///   normalizedDest.StartsWith(normalizedName + "/", OrdinalIgnoreCase)
-    ///
-    /// Первый случай — entry-файл (директива кладёт файл в сам entry).
-    /// Второй — entry-папка (директива кладёт файл внутри entry).
-    ///
-    /// Не-FromArchive директивы не проверяются: CreateDirectory,
-    /// Delete могут иметь любой Destination.
-    ///
-    /// Entry без FromArchive-директив не проверяется — installer
-    /// его пропускает, это не ошибка.
+    /// Условие: normalizedDest == normalizedName
+    ///          OR normalizedDest.StartsWith(normalizedName + "/").
     /// </summary>
     private static void ValidateExtensionEntries(
         IReadOnlyList<ExtensionEntry> entries,
@@ -274,12 +272,7 @@ public sealed class ValidateManifestStep : IStep<ModlistManifest, ModlistManifes
                     continue;
 
                 if (string.IsNullOrWhiteSpace(fromArchive.Destination))
-                {
-                    // Пропускаем: если Destination пустой, это уже
-                    // отдельная проблема, но не наша. Не добавляем
-                    // ошибку дважды.
                     continue;
-                }
 
                 var normalizedDest = NormalizePath(fromArchive.Destination);
 
@@ -303,6 +296,77 @@ public sealed class ValidateManifestStep : IStep<ModlistManifest, ModlistManifes
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Проверяет, что entries не пересекаются: никакая пара не
+    /// является префиксом друг друга.
+    ///
+    /// Условие пересечения для пары (a, b), где a и b — нормализованные
+    /// имена:
+    ///   - a == b (дубликат, регистронезависимо);
+    ///   - a.StartsWith(b + "/");
+    ///   - b.StartsWith(a + "/").
+    ///
+    /// Пустые имена пропускаются — их уже отловила ValidateExtensionEntries.
+    /// </summary>
+    private static void ValidateNoOverlap(
+        IReadOnlyList<ExtensionEntry> entries,
+        string sectionName,
+        List<string> errors)
+    {
+        // Готовим нормализованные имена.
+        var normalized = new (int Index, string Original, string Normalized)[entries.Count];
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            var original = entries[i].Name;
+            normalized[i] = (
+                i,
+                original,
+                string.IsNullOrWhiteSpace(original)
+                    ? ""
+                    : NormalizePath(original));
+        }
+
+        for (int i = 0; i < normalized.Length; i++)
+        {
+            var a = normalized[i];
+            if (a.Normalized.Length == 0) continue;
+
+            for (int j = i + 1; j < normalized.Length; j++)
+            {
+                var b = normalized[j];
+                if (b.Normalized.Length == 0) continue;
+
+                if (IsOverlap(a.Normalized, b.Normalized))
+                {
+                    errors.Add(
+                        $"{sectionName}: '{a.Original}' (index {a.Index}) " +
+                        $"and '{b.Original}' (index {b.Index}) overlap. " +
+                        $"Each entry must be independent — either remove " +
+                        $"the parent entry or remove the child entry.");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// true, если a и b пересекаются: совпадают или один вложен в другой.
+    /// Оба аргумента — нормализованные пути (непустые).
+    /// </summary>
+    private static bool IsOverlap(string a, string b)
+    {
+        if (string.Equals(a, b, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (a.StartsWith(b + "/", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (b.StartsWith(a + "/", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
     }
 
     /// <summary>

@@ -44,29 +44,19 @@
                     IsVisible="{Binding IsConfiguring}"
                     VerticalAlignment="Top">
 
-            <TextBlock Text="{Tr 'Pack.StartHeader'}"
-                       FontSize="16"
-                       FontWeight="SemiBold"
-                       Margin="0,0,0,4" />
+            <controls:FilePickerView DataContext="{Binding LoadConfigPicker}" />
 
-            <Button Content="{Tr 'Pack.LoadConfig_Button'}"
-                    Command="{Binding LoadConfigCommand}"
-                    HorizontalAlignment="Left"
-                    Padding="20,8" />
-            <TextBlock Text="{Tr 'Pack.LoadConfig_Description'}"
-                       Foreground="{StaticResource TextMutedBrush}"
-                       FontSize="11"
-                       Margin="0,-8,0,0" />
+            <StackPanel Spacing="6" Margin="0,8,0,0">
+                <TextBlock Text="{Tr 'Pack.CreateConfig_Description'}"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
 
-            <Button Content="{Tr 'Pack.CreateConfig_Button'}"
-                    Command="{Binding CreateConfigCommand}"
-                    HorizontalAlignment="Left"
-                    Padding="20,8"
-                    Margin="0,8,0,0" />
-            <TextBlock Text="{Tr 'Pack.CreateConfig_Description'}"
-                       Foreground="{StaticResource TextMutedBrush}"
-                       FontSize="11"
-                       Margin="0,-8,0,0" />
+                <Button Content="{Tr 'Pack.CreateConfig_Button'}"
+                        Command="{Binding CreateConfigCommand}"
+                        HorizontalAlignment="Left"
+                        Padding="20,8" />
+            </StackPanel>
 
             <TextBlock Text="{Binding ErrorMessage}"
                        Foreground="{StaticResource WarningBrush}"

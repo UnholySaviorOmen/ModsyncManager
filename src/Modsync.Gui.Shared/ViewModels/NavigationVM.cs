@@ -36,6 +36,21 @@ public sealed partial class NavigationVM : ViewModel
 
     public ObservableCollection<NavigationItem> Items { get; }
 
+    /// <summary>
+    /// Верхняя строка подписи внизу сайдбара:
+    /// "ModsyncManager v0.1.0".
+    /// </summary>
+    public string Footer => $"{_settings.ProductName} v{_settings.Version}";
+
+    /// <summary>
+    /// Нижняя строка подписи внизу сайдбара:
+    /// "UnholySaviorOmen © 2026".
+    ///
+    /// Локализована, но перевод одинаковый на всех языках —
+    /// имя автора и год не переводятся.
+    /// </summary>
+    public string Author => Loc.Tr("App.Author");
+
     [ObservableProperty]
     private NavigationItem? _selectedItem;
 

@@ -26,6 +26,19 @@ public sealed partial class FilePickerVM : ObservableObject
     public bool MustExist { get; init; } = true;
     public bool Folder { get; init; }
 
+    /// <summary>
+    /// Срабатывает после успешного выбора файла/папки через PickCommand.
+    /// Аргумент — выбранный путь.
+    ///
+    /// Отличается от подписки на PropertyChanged(Path): срабатывает
+    /// всегда при выборе, даже если выбран тот же путь (значение
+    /// не изменилось → PropertyChanged не приходит).
+    ///
+    /// Используется в PackVM для немедленной загрузки config-а
+    /// сразу после выбора файла.
+    /// </summary>
+    public event EventHandler<string>? Picked;
+
     public FilePickerVM(IFilePickerService picker)
     {
         _picker = picker;
@@ -78,6 +91,9 @@ public sealed partial class FilePickerVM : ObservableObject
             : await _picker.PickFileAsync(Placeholder, FilterHint);
 
         if (picked is not null)
+        {
             SetPath(picked);
+            Picked?.Invoke(this, picked);
+        }
     }
 }

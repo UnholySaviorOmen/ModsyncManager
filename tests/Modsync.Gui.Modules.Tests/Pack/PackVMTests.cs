@@ -127,17 +127,16 @@ public class PackVMTests : IDisposable
     }
 
     // ------------------------------------------------------------------
-    //  Load config — открывает форму с config
+    //  Load config — через picker
     // ------------------------------------------------------------------
 
     [Fact]
     public async Task LoadConfig_OpensFormWithLoadedConfig()
     {
-        var (vm, _, picker, _, _) = Make();
+        var (vm, _, _, _, _) = Make();
         var configPath = WriteValidConfig();
-        picker.FileToReturn = configPath;
 
-        await vm.LoadConfigCommand.ExecuteAsync(null);
+        await vm.OpenConfigAsync(configPath);
 
         vm.IsCreatingConfig.Should().BeTrue();
         vm.IsConfiguring.Should().BeFalse();
@@ -146,12 +145,11 @@ public class PackVMTests : IDisposable
     }
 
     [Fact]
-    public async Task LoadConfig_PickerCancelled_NoFormOpened()
+    public async Task LoadConfig_EmptyPath_NoFormOpened()
     {
-        var (vm, _, picker, _, _) = Make();
-        picker.FileToReturn = null;
+        var (vm, _, _, _, _) = Make();
 
-        await vm.LoadConfigCommand.ExecuteAsync(null);
+        await vm.OpenConfigAsync("");
 
         vm.IsCreatingConfig.Should().BeFalse();
         vm.ConfigVM.Should().BeNull();
@@ -160,14 +158,13 @@ public class PackVMTests : IDisposable
     [Fact]
     public async Task LoadConfig_WhileFormOpen_NoOp()
     {
-        var (vm, _, picker, _, _) = Make();
+        var (vm, _, _, _, _) = Make();
         var configPath = WriteValidConfig();
-        picker.FileToReturn = configPath;
 
-        await vm.LoadConfigCommand.ExecuteAsync(null);
+        await vm.OpenConfigAsync(configPath);
         var first = vm.ConfigVM;
 
-        await vm.LoadConfigCommand.ExecuteAsync(null);
+        await vm.OpenConfigAsync(configPath);
 
         vm.ConfigVM.Should().BeSameAs(first);
     }
@@ -248,7 +245,6 @@ public class PackVMTests : IDisposable
             ArchiveSources = Array.Empty<Modsync.Core.Models.Pack.PackArchiveSource>(),
         };
 
-        // Trigger через рефлексию: ConfigCreated — private event.
         var field = typeof(PackConfigVM)
             .GetField("ConfigCreated",
                 System.Reflection.BindingFlags.Instance |
@@ -321,7 +317,6 @@ public class PackVMTests : IDisposable
         vm.CreateConfigCommand.Execute(null);
         InvokeConfigCreated(vm, MakeInput());
 
-        // Ждём, пока State станет Packing.
         await WaitUntilAsync(() => vm.State == PackState.Packing);
 
         vm.CancelCommand.CanExecute(null).Should().BeTrue();
@@ -444,10 +439,6 @@ public class PackVMTests : IDisposable
         handler?.Invoke(input);
     }
 
-    /// <summary>
-    /// Открывает форму, шлёт ConfigCreated с дефолтным input и ждёт
-    /// завершения packer-а (или перехода в Success/Failure/Configuration).
-    /// </summary>
     private static async Task RunFormAndWaitAsync(PackVM vm)
     {
         vm.CreateConfigCommand.Execute(null);
@@ -458,7 +449,6 @@ public class PackVMTests : IDisposable
             vm.State == PackState.Failure ||
             vm.State == PackState.Configuration);
 
-        // Даём MaybeShowPatchDialogAsync завершиться.
         await Task.Delay(150);
     }
 

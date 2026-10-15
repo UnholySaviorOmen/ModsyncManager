@@ -35,10 +35,12 @@
             <Color x:Key="TextPrimaryColor">#e8e8e8</Color>
             <Color x:Key="TextSecondaryColor">#a0a0a0</Color>
             <Color x:Key="TextMutedColor">#6a6a6a</Color>
+            <Color x:Key="TextFaintColor">#4a4a4a</Color>
 
             <SolidColorBrush x:Key="TextPrimaryBrush"   Color="{StaticResource TextPrimaryColor}" />
             <SolidColorBrush x:Key="TextSecondaryBrush" Color="{StaticResource TextSecondaryColor}" />
             <SolidColorBrush x:Key="TextMutedBrush"     Color="{StaticResource TextMutedColor}" />
+            <SolidColorBrush x:Key="TextFaintBrush"     Color="{StaticResource TextFaintColor}" />
 
             <!-- Accent -->
             <Color x:Key="AccentColor">#d3b181</Color>

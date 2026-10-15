@@ -832,7 +832,7 @@ Logs (DevMode).
 **Локализовано:**
 
 - Navigation (сайдбар).
-- Settings: About, Nexus, Nexus Free Download, Language, App settings.
+- Settings: Nexus, Nexus Free Download, Language, App settings.
 - Pack: главный экран, Patch Archive Dialog, Config-форма.
 - Install: главный экран, summary.
 - Verify: главный экран, ResultTitle, Passed/Failed.
@@ -852,6 +852,19 @@ Logs (DevMode).
 **Файл `Strings.loc.json`** копируется в output через
 `<None Update="Resources\Strings.loc.json">` в
 `Modsync.Gui.Shared.csproj`.
+
+**Footer в сайдбаре:**
+
+- Строка 1: «ModsyncManager v{X}» — `TextMutedBrush` (`#6a6a6a`),
+  FontSize 10.
+- Строка 2: «UnholySaviorOmen © 2026» — `TextFaintBrush` (`#4a4a4a`),
+  FontSize 10.
+- Над футером — `Border` с `BorderThickness="0,1,0,0"` (верхняя
+  граница `BorderSubtleBrush`).
+- Раздел «О программе» в Settings удалён — он дублировал футер.
+
+**Ключ локализации:** `App.Author` — «UnholySaviorOmen © 2026»
+(одинаковый в en/ru).
 
 ---
 
@@ -1212,6 +1225,31 @@ Installer **reconcile-ит** всё, что восстанавливает из 
 манифесте — полностью `Skipped`. Первый install после обновления
 манифеста может пересоздать несколько модов (recreate) — это
 ожидаемое поведение.
+
+### Dashboard empty state
+
+Если в `<exeDir>/Instances/` нет валидных сборок, Dashboard
+показывает пустое состояние вместо списка карточек.
+
+**Layout:** full-area `Border` (занимает всё пространство
+под заголовком «Дашборд»), внутри — центрированный по вертикали
+`StackPanel`:
+
+- `PathIcon` (48×48, Lucide «package», `TextMutedBrush`).
+- Заголовок «Сборок пока нет» (FontSize 18, SemiBold).
+- Описание (FontSize 13, `TextSecondaryBrush`).
+- Кнопка «Установить сборку…».
+
+**Кнопка:** `OpenInstallCommand` в `HomeVM` поднимает
+`InstallRequested("", "")` — сигнал «открыть Install без
+предзаполнения». `MainWindowVM.OnInstallRequested` при пустых
+путях навигирует на Install, но не вызывает `PrepareForInstall`.
+
+**Ключи локализации:** `Home.Empty_Title`, `Home.Empty_Description`,
+`Home.Empty_InstallButton`.
+
+**Если сборки есть** — `IsEmpty = false`, `Border` скрыт,
+показывается `ScrollViewer` с `ItemsControl` карточек.
 
 ---
 

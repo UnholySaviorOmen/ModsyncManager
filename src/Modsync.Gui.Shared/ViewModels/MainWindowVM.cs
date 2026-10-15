@@ -49,6 +49,15 @@ public sealed partial class MainWindowVM : ViewModel
     {
         NavigateTo(ScreenType.Install);
 
+        // Пустые пути — сигнал «просто открыть Install».
+        // Не вызываем PrepareForInstall — InstallVM уже в
+        // Configuration с пустыми picker-ами.
+        if (string.IsNullOrWhiteSpace(manifestPath) ||
+            string.IsNullOrWhiteSpace(targetPath))
+        {
+            return;
+        }
+
         if (ActivePane is IInstallTarget target)
             target.PrepareForInstall(manifestPath, targetPath);
     }

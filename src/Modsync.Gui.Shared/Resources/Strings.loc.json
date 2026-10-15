@@ -32,6 +32,10 @@
     "en": "Step {0} of {1}",
     "ru": "Шаг {0} из {1}"
   },
+  "App.Author": {
+    "en": "UnholySaviorOmen © 2026",
+    "ru": "UnholySaviorOmen © 2026"
+  },
   "Common.Cancel_Button": {
     "en": "Cancel",
     "ru": "Отмена"
@@ -49,21 +53,25 @@
     "en": "Settings",
     "ru": "Настройки"
   },
-  "Settings.About_Title": {
-    "en": "About",
-    "ru": "О программе"
+  "Settings.Language_SectionTitle": {
+    "en": "Language",
+    "ru": "Язык"
   },
-  "Settings.About_Name": {
-    "en": "Name",
-    "ru": "Название"
+  "Settings.Language_Label": {
+    "en": "Interface language",
+    "ru": "Язык интерфейса"
   },
-  "Settings.About_Version": {
-    "en": "Version",
-    "ru": "Версия"
+  "Settings.Language_RestartHint": {
+    "en": "Restart ModsyncManager to apply the new language.",
+    "ru": "Перезапустите ModsyncManager, чтобы применить новый язык."
   },
-  "Settings.About_License": {
-    "en": "License",
-    "ru": "Лицензия"
+  "Settings.Language_English": {
+    "en": "English",
+    "ru": "English"
+  },
+  "Settings.Language_Russian": {
+    "en": "Русский",
+    "ru": "Русский"
   },
   "Settings.AppSettings_Title": {
     "en": "Application settings",
@@ -176,25 +184,17 @@
     "en": "Pack",
     "ru": "Запаковка"
   },
-  "Pack.StartHeader": {
-    "en": "Start a pack",
-    "ru": "Начать запаковку"
-  },
-  "Pack.LoadConfig_Button": {
-    "en": "Load config…",
-    "ru": "Загрузить конфиг…"
-  },
-  "Pack.LoadConfig_Description": {
-    "en": "Open an existing modsyncmanager-pack.json to edit and pack.",
-    "ru": "Открыть существующий modsyncmanager-pack.json для редактирования и запаковки."
-  },
-  "Pack.CreateConfig_Button": {
-    "en": "Create config…",
-    "ru": "Создать конфиг…"
+  "Pack.LoadConfigPicker_Placeholder": {
+    "en": "Open an existing modsyncmanager-pack.json for editing and packing",
+    "ru": "Открыть существующий modsyncmanager-pack.json для редактирования и запаковки"
   },
   "Pack.CreateConfig_Description": {
     "en": "Start from scratch. Recommended if you've never packed this instance before.",
     "ru": "Начать с нуля. Рекомендуется, если вы ещё не паковали этот инстанс."
+  },
+  "Pack.CreateConfig_Button": {
+    "en": "Create config…",
+    "ru": "Создать конфиг…"
   },
   "Pack.Success_Title": {
     "en": "Pack complete",
@@ -326,17 +326,9 @@
     "ru": "Не удалось создать патч: {0}"
   },
 
-  "Pack.Config.Title": {
-    "en": "Pack Config",
-    "ru": "Конфиг запаковки"
-  },
   "Pack.Config.LoadConfig_Button": {
     "en": "Load config…",
     "ru": "Загрузить конфиг…"
-  },
-  "Pack.Config.LoadConfig_Hint": {
-    "en": "Load existing config from disk.",
-    "ru": "Загрузить существующий конфиг с диска."
   },
   "Pack.Config.Instance_SectionTitle": {
     "en": "Instance",
@@ -358,7 +350,6 @@
     "en": "Scanning instance…",
     "ru": "Сканирование инстанса…"
   },
-
   "Pack.Config.Metadata_SectionTitle": {
     "en": "Metadata",
     "ru": "Метаданные"
@@ -407,7 +398,6 @@
     "en": "MO2 profile",
     "ru": "Профиль MO2"
   },
-
   "Pack.Config.Mo2Archive_SectionTitle": {
     "en": "MO2 archive",
     "ru": "Архив MO2"
@@ -428,7 +418,6 @@
     "en": "not in downloads/",
     "ru": "нет в downloads/"
   },
-
   "Pack.Config.Extensions_SectionTitle": {
     "en": "Extensions",
     "ru": "Расширения"
@@ -445,7 +434,6 @@
     "en": "+ Add extension",
     "ru": "+ Добавить расширение"
   },
-
   "Pack.Config.Extras_SectionTitle": {
     "en": "Extras",
     "ru": "Дополнения"
@@ -462,7 +450,6 @@
     "en": "+ Add extra",
     "ru": "+ Добавить дополнение"
   },
-
   "Pack.Config.Archives_SectionTitle": {
     "en": "Archives without metadata",
     "ru": "Архивы без метаданных"
@@ -503,7 +490,6 @@
     "en": "Skipped — will not be added to archiveSources",
     "ru": "Пропущено — не будет добавлено в archiveSources"
   },
-
   "Pack.Config.Footer_ConfigWillBeSavedTo": {
     "en": "Config will be saved to:",
     "ru": "Конфиг будет сохранён в:"
@@ -528,19 +514,10 @@
     "en": "Save as…",
     "ru": "Сохранить как…"
   },
-  "Pack.Config.SaveAs_Hint": {
-    "en": "Save config without running pack.",
-    "ru": "Сохранить конфиг без запуска запаковки."
-  },
   "Pack.Config.Pack_Button": {
     "en": "Pack",
     "ru": "Запаковать"
   },
-  "Pack.Config.Pack_Hint": {
-    "en": "Save config and run packer.",
-    "ru": "Сохранить конфиг и запустить запаковку."
-  },
-
   "Pack.Config.Error_FailedToLoad": {
     "en": "Failed to load config: {0}",
     "ru": "Не удалось загрузить конфиг: {0}"
@@ -582,7 +559,6 @@
     "en": "Done",
     "ru": "Готово"
   },
-
   "Install.Success_Title": {
     "en": "Installation complete",
     "ru": "Установка завершена"
@@ -591,7 +567,6 @@
     "en": "Installation failed",
     "ru": "Установка не удалась"
   },
-
   "Install.Summary_Name": {
     "en": "Name",
     "ru": "Название"
@@ -649,12 +624,10 @@
     "en": "Done",
     "ru": "Готово"
   },
-
   "Verify.InProgress_Title": {
     "en": "Verifying…",
     "ru": "Проверка…"
   },
-
   "Verify.Result_AllPassed": {
     "en": "All checks passed",
     "ru": "Все проверки пройдены"
@@ -663,7 +636,6 @@
     "en": "{0} check(s) failed",
     "ru": "Провалено проверок: {0}"
   },
-
   "Verify.Passed_Label": {
     "en": "Passed:",
     "ru": "Пройдено:"
@@ -672,12 +644,10 @@
     "en": "Failed:",
     "ru": "Провалено:"
   },
-
   "Verify.ShowAllChecks": {
     "en": "Show all checks (verbose)",
     "ru": "Показать все проверки (подробно)"
   },
-
   "Verify.Failure_Title": {
     "en": "Verify failed",
     "ru": "Верификация не удалась"
@@ -706,6 +676,18 @@
   "Home.FailedToOpenMo2": {
     "en": "Failed to open ModOrganizer.exe: {0}",
     "ru": "Не удалось открыть ModOrganizer.exe: {0}"
+  },
+  "Home.Empty_Title": {
+    "en": "No packs installed yet",
+    "ru": "Сборок пока нет"
+  },
+  "Home.Empty_Description": {
+    "en": "Just point to a modlist.json, and ModsyncManager will download everything needed and install the pack for you.",
+    "ru": "Просто укажите, где находится modlist.json, и приложение само скачает всё необходимое для сборки и установит её."
+  },
+  "Home.Empty_InstallButton": {
+    "en": "Install a pack…",
+    "ru": "Установить сборку…"
   },
 
   "Logs.Title": {
@@ -765,26 +747,5 @@
   "FilePicker.FolderNotFound": {
     "en": "Folder not found",
     "ru": "Папка не найдена"
-  },
-
-  "Settings.Language_SectionTitle": {
-    "en": "Language",
-    "ru": "Язык"
-  },
-  "Settings.Language_Label": {
-    "en": "Interface language",
-    "ru": "Язык интерфейса"
-  },
-  "Settings.Language_RestartHint": {
-    "en": "Restart ModsyncManager to apply the new language.",
-    "ru": "Перезапустите ModsyncManager, чтобы применить новый язык."
-  },
-  "Settings.Language_English": {
-    "en": "English",
-    "ru": "English"
-  },
-  "Settings.Language_Russian": {
-    "en": "Русский",
-    "ru": "Русский"
   }
 }

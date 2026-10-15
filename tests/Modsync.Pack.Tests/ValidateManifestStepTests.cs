@@ -707,4 +707,311 @@ public class ValidateManifestStepTests
         ex.Which.Message.Should().Contain("plugins/x.dll");
         ex.Which.Message.Should().Contain("other/y.dll");
     }
+
+    // ------------------------------------------------------------------
+    //  Cross-entry overlap: mo2.extensions[]
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Extensions_IdenticalNames_Fails()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*overlap*")
+            .WithMessage("*plugins/fomod.dll*");
+    }
+
+    [Fact]
+    public async Task Extensions_ParentFolderAndChildFile_Fails()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*overlap*");
+    }
+
+    [Fact]
+    public async Task Extensions_ChildFileAndParentFolder_Fails()
+    {
+        // Порядок другой — проверяем, что валидация симметрична.
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("plugins",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*overlap*");
+    }
+
+    [Fact]
+    public async Task Extensions_ParentAndChildFolders_Fails()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe")),
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*overlap*");
+    }
+
+    [Fact]
+    public async Task Extensions_Siblings_NotOverlap_Passes()
+    {
+        // plugins/fomod.dll и plugins/other.dll — соседи, не пересекаются.
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("plugins/other.dll",
+                MakeFromArchive("local_ext", "other.dll", "plugins/other.dll")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_DifferentRoots_NotOverlap_Passes()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_SimilarPrefix_NotOverlap_Passes()
+    {
+        // "plugins" и "plugins2" — не пересекаются: "plugins2" не
+        // начинается с "plugins/".
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("plugins2",
+                MakeFromArchive("local_ext", "other.dll", "plugins2/other.dll")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task Extensions_CaseInsensitiveOverlap_Fails()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("plugins",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("Plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "Plugins/fomod.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*overlap*");
+    }
+
+    [Fact]
+    public async Task Extensions_BackslashNormalized_OverlapDetected()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry(@"plugins\fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", @"plugins\fomod.dll")),
+            MakeExtensionEntry("plugins/fomod.dll",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*overlap*");
+    }
+
+    [Fact]
+    public async Task Extensions_TrailingSlashNormalized_OverlapDetected()
+    {
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("tools/",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe")),
+            MakeExtensionEntry("tools/BethINI",
+                MakeFromArchive("local_pkg", "BethINI.exe",
+                    "tools/BethINI/BethINI.exe")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*overlap*");
+    }
+
+    // ------------------------------------------------------------------
+    //  Cross-entry overlap: stockGame.extras[]
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Extras_ParentAndChildOverlap_Fails()
+    {
+        var manifest = MakeManifestWithExtras(new[]
+        {
+            MakeExtensionEntry("enbseries",
+                MakeFromArchive("local_enb", "enbseries.ini",
+                    "enbseries/enbseries.ini")),
+            MakeExtensionEntry("enbseries/enbseries.ini",
+                MakeFromArchive("local_enb", "enbseries.ini",
+                    "enbseries/enbseries.ini")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*stockGame.extras*")
+            .WithMessage("*overlap*");
+    }
+
+    [Fact]
+    public async Task Extras_Siblings_NotOverlap_Passes()
+    {
+        var manifest = MakeManifestWithExtras(new[]
+        {
+            MakeExtensionEntry("skse64_loader.exe",
+                MakeFromArchive("local_skse", "skse64_loader.exe",
+                    "skse64_loader.exe")),
+            MakeExtensionEntry("d3d11.dll",
+                MakeFromArchive("local_enb", "d3d11.dll",
+                    "d3d11.dll")),
+        });
+
+        var result = await _step.ExecuteAsync(manifest, CancellationToken.None);
+        result.Should().BeSameAs(manifest);
+    }
+
+    [Fact]
+    public async Task ExtensionsOverlapAndExtrasOverlap_BothReported()
+    {
+        var manifest = new ModlistManifest
+        {
+            SchemaVersion = "1.0.0",
+            ManifestVersion = "1.0.0",
+            CreatedAt = DateTimeOffset.UtcNow,
+            CreatedBy = "modsyncmanager-pack/0.1.0",
+            Meta = new ManifestMeta
+            {
+                Name = "Test",
+                Version = "1.0.0",
+                Author = "tester",
+                Game = "skyrimspecialedition",
+                GameVersion = "1.6.1170",
+            },
+            Execution = new ExecutionPolicy(),
+            Mo2 = new Mo2Section
+            {
+                Version = "2.5.2",
+                Profile = "Default",
+                Archive = MakeMo2Archive(),
+                Extensions = new[]
+                {
+                    MakeExtensionEntry("plugins",
+                        MakeFromArchive("local_ext", "fomod.dll",
+                            "plugins/fomod.dll")),
+                    MakeExtensionEntry("plugins/fomod.dll",
+                        MakeFromArchive("local_ext", "fomod.dll",
+                            "plugins/fomod.dll")),
+                },
+            },
+            StockGame = new StockGameSection
+            {
+                Extras = new[]
+                {
+                    MakeExtensionEntry("enbseries",
+                        MakeFromArchive("local_enb", "enbseries.ini",
+                            "enbseries/enbseries.ini")),
+                    MakeExtensionEntry("enbseries/enbseries.ini",
+                        MakeFromArchive("local_enb", "enbseries.ini",
+                            "enbseries/enbseries.ini")),
+                },
+            },
+            Archives = Array.Empty<ArchiveEntry>(),
+            Mods = Array.Empty<ModEntry>(),
+            Plugins = Array.Empty<PluginEntry>(),
+            Loadorder = Array.Empty<string>(),
+        };
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.Which.Message.Should().Contain("mo2.extensions");
+        ex.Which.Message.Should().Contain("stockGame.extras");
+    }
+
+    [Fact]
+    public async Task Extensions_EmptyNameAndOverlap_EmptyNameReportedOnly()
+    {
+        // Пустое имя не участвует в проверке overlap (пропускается),
+        // но ошибка о пустом имени выдаётся.
+        var manifest = MakeManifestWithExtensions(new[]
+        {
+            MakeExtensionEntry("",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+            MakeExtensionEntry("plugins",
+                MakeFromArchive("local_ext", "fomod.dll", "plugins/fomod.dll")),
+        });
+
+        var act = async () => await _step.ExecuteAsync(
+            manifest, CancellationToken.None);
+
+        var ex = await act.Should().ThrowAsync<InvalidOperationException>();
+        ex.Which.Message.Should().Contain("must be non-empty");
+        ex.Which.Message.Should().NotContain("overlap");
+    }
 }

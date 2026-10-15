@@ -10,6 +10,7 @@ using Modsync.Gui.Modules.Pack.Services;
 using Modsync.Gui.Shared.Services;
 using Modsync.Gui.Shared.State;
 using Modsync.Gui.Shared.ViewModels;
+using Modsync.Gui.Shared.ViewModels.Controls;
 using Modsync.Pack;
 using Modsync.Pack.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,18 +18,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Modsync.Gui.Modules.Pack.ViewModels;
 
-/// <summary>
-/// VM экрана Pack.
-///
-/// Один путь: пользователь нажимает «Load config…» (выбирает
-/// существующий modsyncmanager-pack.json) или «Create config…»
-/// (открывает пустую форму). Обе кнопки открывают embedded-форму
-/// PackConfigVM.
-///
-/// Локализация: ErrorMessage через Loc.Tr. Computed-свойства
-/// Summary собираются через string.Format(Loc.Tr(key), args)
-/// — не Loc.Tr(key, args), т.к. C# выбирает не ту перегрузку.
-/// </summary>
 public sealed partial class PackVM : ProgressViewModel
 {
     private readonly IPackRunner _runner;
@@ -64,10 +53,11 @@ public sealed partial class PackVM : ProgressViewModel
     [ObservableProperty]
     private bool _isCreatingConfig;
 
+    public FilePickerVM LoadConfigPicker { get; }
     public LogVM Log { get; }
 
     // ------------------------------------------------------------------
-    //  Computed: summary (локализованные строки с плейсхолдерами)
+    //  Computed: summary
     // ------------------------------------------------------------------
 
     public string ModsScannedText => Summary is null
@@ -112,34 +102,67 @@ public sealed partial class PackVM : ProgressViewModel
         _picker = picker;
         _logger = logger;
         Log = log;
+
+        LoadConfigPicker = new FilePickerVM(picker)
+        {
+            Placeholder = Loc.Tr("Pack.LoadConfigPicker_Placeholder"),
+            FilterHint = ".json",
+            MustExist = true,
+            Folder = false,
+        };
+        LoadConfigPicker.Picked += OnLoadConfigPicked;
     }
 
     public void SetNavigateHome(Action navigateHome) { }
 
     // ------------------------------------------------------------------
-    //  Load config… (из файла)
+    //  React on picker
     // ------------------------------------------------------------------
 
-    [RelayCommand]
-    private async Task LoadConfigAsync()
+    private void OnLoadConfigPicked(object? sender, string path)
     {
+        _ = TryOpenConfigAsync(path);
+    }
+
+    private async Task TryOpenConfigAsync(string configPath)
+    {
+        await OpenConfigAsync(configPath);
+
+        // Сбрасываем picker, чтобы при следующем открытии
+        // он был пустым.
+        LoadConfigPicker.Clear();
+    }
+
+    /// <summary>
+    /// Открыть форму PackConfig с config-ом из указанного пути.
+    /// Идемпотентно: если форма уже открыта (IsCreatingConfig) —
+    /// no-op. Используется picker-ом и тестами.
+    /// </summary>
+    public async Task OpenConfigAsync(string configPath)
+    {
+        if (string.IsNullOrWhiteSpace(configPath))
+            return;
+
         if (IsCreatingConfig)
             return;
 
-        var picked = await _picker.PickFileAsync(
-            "Select modsyncmanager-pack.json", ".json");
+        try
+        {
+            var vm = _sp.GetRequiredService<PackConfigVM>();
+            vm.ConfigCreated += OnConfigCreated;
+            vm.Cancelled += OnConfigCancelled;
 
-        if (string.IsNullOrWhiteSpace(picked))
-            return;
+            ConfigVM = vm;
+            IsCreatingConfig = true;
 
-        var vm = _sp.GetRequiredService<PackConfigVM>();
-        vm.ConfigCreated += OnConfigCreated;
-        vm.Cancelled += OnConfigCancelled;
-
-        ConfigVM = vm;
-        IsCreatingConfig = true;
-
-        await vm.LoadConfigAsync(picked);
+            await vm.LoadConfigAsync(configPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to open config: {Path}", configPath);
+            ErrorMessage = ex.Message;
+        }
     }
 
     // ------------------------------------------------------------------

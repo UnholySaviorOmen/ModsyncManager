@@ -1,8 +1,8 @@
 # ModsyncManager — состояние проекта и план работ
 
 **Обновлено:** 2026-10-15
-**Всего тестов:** 1319, 0 failed
-**Текущий блок:** локализация GUI (en/ru)
+**Всего тестов:** 1333, 0 failed
+**Текущий блок:** UI/UX ревизия Pack + Dashboard empty state
 **Следующий блок:** (не определён)
 
 **Спутные документы:**
@@ -51,8 +51,9 @@ Home-дашборд), Nexus credential UI, nxm:// handler без WebView2,
 v0.2.0 (блоки 1.1, 1.2, 2.1, 3.1, 3.2), блоки 36–40 (patch-архив
 для unmatched, Pack UX rework, восстановление .meta для архивов,
 полировка, Nexus auth pre-flight), блоки 41.1–41.4 (reconcile mods/extensions/extras +
-валидация entry.Name), 4g (лимит логов), локализация GUI
-(CodingSeb.Localization, en/ru, default — ru).
+валидация entry.Name), 4g (лимит логов), локализация GUI (CodingSeb.Localization, en/ru, default — ru),
+41.5 (cross-entry overlap валидация), UI/UX ревизия Pack
+(picker + кнопки в ряд), Dashboard empty state.
 
 v0.2.0 закрыт 2026-10-01. Отменены: блок 2.2 (глобальный реестр
 `archives.db`), Spectre-прогресс и `--verbose` для CLI, механизм
@@ -553,6 +554,29 @@ tests/
   `[ModuleInitializer]` устанавливает `"en"` в тестовом процессе —
   независимо от пользовательских настроек. Копирование
   `Strings.loc.json` в output тестов через `<None Include=...>`.
+- **Footer в сайдбаре.** Не в Settings. Две строки:
+  «ModsyncManager v{X}» (TextMutedBrush) и
+  «UnholySaviorOmen © 2026» (TextFaintBrush).
+  Версия — из `SettingsVM.Version`. Полный футер
+  (`SettingsVM.Footer`) не используется в UI.
+- **`TextFaintBrush` (#4a4a4a)** — для сильно приглушённого
+  текста. `TextMutedBrush` (#6a6a6a) остаётся для muted.
+- **Раздел «О программе» в Settings удалён.** Дублировал футер.
+- **`FilePickerVM.Picked`** — событие, срабатывающее после
+  успешного выбора файла/папки через `PickCommand`. В отличие
+  от подписки на `PropertyChanged(Path)`, срабатывает **всегда**,
+  даже если выбран тот же путь. Используется в `PackVM` для
+  немедленной загрузки config-а после выбора.
+- **Пустое состояние Dashboard.** Если `HomeVM.IsEmpty` — full-area
+  `Border` с иконкой (Lucide «package»), заголовком, описанием
+  и кнопкой «Установить сборку…». Кнопка поднимает
+  `InstallRequested("", "")`; `MainWindowVM` при пустых путях
+  просто навигирует на Install без `PrepareForInstall`.
+- **Экран Pack — единый picker.** Файл конфига выбирается через
+  `FilePickerView` (как в Install/Verify). Реакция — на событие
+  `Picked`. Кнопка «Create config…» — пустая форма.
+- **Pack Config — кнопки в ряд.** Внизу формы: Cancel, Load config…,
+  Save as…, Pack. Заголовок «Pack Config» убран.
 
 ### Фаза 3.9 — Дизайн
 
@@ -1062,6 +1086,15 @@ Pre-flight (`PreflightNexusAuthStep`) ловит это ещё раньше:
 - **Локализация логов** (`logger.LogInformation` и т. п.). Логи —
   dev-диагностика, не UI.
 - **Локализация `Console.Error.WriteLine` в `App`.** Dev-диагностика.
+- **CI (GitHub Actions).** Обсуждено 2026-10-15. Решение: пока
+  не делаем. Один автор, тесты гоняются локально. Вернёмся,
+  если появится активный контрибьютор или публичное сообщество.
+- **Виртуализация `VerifyVM.Rows`.** Пока не тормозит.
+  Если на больших прогонах `ShowAllChecks=true` будет лагать —
+  вернёмся.
+- **Параллелизм `ArchiveMatcher.BuildAsync`.** Pack на OmenRim 7
+  проходит за приемлемое время. Если станет медленным —
+  параллелим с ограничением на количество temp-папок.
 
 ---
 
@@ -1087,6 +1120,28 @@ Pre-flight (`PreflightNexusAuthStep`) ловит это ещё раньше:
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
+- **2026-10-15** — UI/UX ревизия Pack + Dashboard empty state.
+  - **Pack — единый picker.** Вместо кнопки «Load config…» —
+    `FilePickerView` с placeholder «Открыть существующий
+    modsyncmanager-pack.json…». Реакция на выбор — через
+    новое событие `FilePickerVM.Picked`. Обработчик
+    `PropertyChanged(Path)` не подходит: не срабатывает, если
+    пользователь выбрал тот же путь (значение не изменилось).
+  - **Pack Config — кнопки в ряд.** Заголовок «Pack Config»
+    убран. Внизу формы: Cancel, Load config…, Save as…, Pack.
+    Caption-подписи под кнопками убраны.
+  - **Убран раздел «О программе»** из Settings. Дублировал футер.
+  - **Footer переехал в сайдбар.** Две строки:
+    «ModsyncManager v{X}» (TextMutedBrush) + «UnholySaviorOmen © 2026»
+    (TextFaintBrush). Новый `TextFaintBrush` (#4a4a4a) в палитре.
+  - **Dashboard empty state.** Full-area карточка с иконкой
+    (Lucide «package»), заголовком, описанием и кнопкой
+    «Установить сборку…». Клик ведёт на Install с пустыми
+    picker-ами (`InstallRequested("", "")`).
+  - **41.5 — cross-entry overlap валидация.** `ValidateManifestStep`
+    запрещает пересекающиеся entries в `mo2.extensions[]` и
+    `stockGame.extras[]` (один является префиксом другого).
+  - **Итог:** `dotnet test` — 1333 тестов, 0 failed.
 - **2026-10-15** — Локализация GUI (en/ru).
   - **Стек:** `CodingSeb.Localization` 1.4.0 (ядро + JSON-загрузчик),
     `CodingSeb.Localization.Avalonia` 1.3.1 (markup extension `{Tr}`).

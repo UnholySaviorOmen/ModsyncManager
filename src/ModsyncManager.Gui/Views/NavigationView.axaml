@@ -9,12 +9,10 @@
         <conv:ScreenIconConverter x:Key="ScreenIconConverter" />
     </UserControl.Resources>
 
-    <Grid RowDefinitions="*,Auto"
+    <Grid RowDefinitions="*,Auto,Auto"
           Background="{StaticResource SurfaceSidebarBrush}">
 
-        <!-- ============================================================
-         Навигация
-         ============================================================ -->
+        <!-- Навигация -->
         <ListBox Grid.Row="0"
                  ItemsSource="{Binding Items}"
                  SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
@@ -57,8 +55,32 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <!-- Нижний отступ -->
+        <!-- Footer -->
         <Border Grid.Row="1"
+                Background="Transparent"
+                Margin="12,8,12,0"
+                Padding="0,8,0,0"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="0,1,0,0">
+            <StackPanel Spacing="2"
+                        HorizontalAlignment="Stretch">
+                <TextBlock Text="{Binding Footer}"
+                           Foreground="{StaticResource TextMutedBrush}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Stretch" />
+                <TextBlock Text="{Binding Author}"
+                           Foreground="{StaticResource TextFaintBrush}"
+                           FontSize="10"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Stretch" />
+            </StackPanel>
+        </Border>
+
+        <!-- Нижний отступ -->
+        <Border Grid.Row="2"
                 Height="12"
                 Background="Transparent" />
 

@@ -17,8 +17,62 @@
                        VerticalAlignment="Center" />
         </Grid>
 
-        <!-- Cards -->
+        <!-- Empty state — full area -->
+        <Border Grid.Row="1"
+                IsVisible="{Binding IsEmpty}"
+                Background="{StaticResource SurfaceRaisedBrush}"
+                BorderBrush="{StaticResource BorderSubtleBrush}"
+                BorderThickness="1"
+                CornerRadius="12"
+                Padding="40">
+            <StackPanel Spacing="20"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+
+                <!-- Icon -->
+                <PathIcon Width="48"
+                          Height="48"
+                          Foreground="{StaticResource TextMutedBrush}"
+                          HorizontalAlignment="Center">
+                    <PathIcon.Data>
+                        <StreamGeometry>
+                            M12 2 L21 7 V17 L12 22 L3 17 V7 Z
+                            M12 4.2 L5.2 8 L12 11.8 L18.8 8 Z
+                            M5 10 V16 L11 19.2 V13.2 Z
+                            M13 13.2 V19.2 L19 16 V10 Z
+                        </StreamGeometry>
+                    </PathIcon.Data>
+                </PathIcon>
+
+                <!-- Title -->
+                <TextBlock Text="{Tr 'Home.Empty_Title'}"
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           TextAlignment="Center"
+                           HorizontalAlignment="Center" />
+
+                <!-- Description -->
+                <TextBlock Text="{Tr 'Home.Empty_Description'}"
+                           FontSize="13"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxWidth="440"
+                           HorizontalAlignment="Center" />
+
+                <!-- Button -->
+                <Button Content="{Tr 'Home.Empty_InstallButton'}"
+                        Command="{Binding OpenInstallCommand}"
+                        HorizontalAlignment="Center"
+                        Padding="24,10"
+                        Margin="0,4,0,0" />
+
+            </StackPanel>
+        </Border>
+
+        <!-- Items -->
         <ScrollViewer Grid.Row="1"
+                      IsVisible="{Binding HasItems}"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <ItemsControl ItemsSource="{Binding Items}">

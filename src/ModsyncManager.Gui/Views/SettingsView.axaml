@@ -23,46 +23,6 @@
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="20">
 
-                <!-- About -->
-                <StackPanel Spacing="8">
-                    <TextBlock Text="{Tr 'Settings.About_Title'}"
-                               FontSize="16"
-                               FontWeight="SemiBold" />
-
-                    <Border Background="{StaticResource SurfaceRaisedBrush}"
-                            BorderBrush="{StaticResource BorderSubtleBrush}"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="16">
-                        <Grid ColumnDefinitions="Auto,*"
-                              RowDefinitions="Auto,Auto,Auto">
-
-                            <TextBlock Grid.Row="0" Grid.Column="0"
-                                       Text="{Tr 'Settings.About_Name'}"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Margin="0,0,16,8" />
-                            <TextBlock Grid.Row="0" Grid.Column="1"
-                                       Text="{Binding ProductName}"
-                                       Margin="0,0,0,8" />
-
-                            <TextBlock Grid.Row="1" Grid.Column="0"
-                                       Text="{Tr 'Settings.About_Version'}"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Margin="0,0,16,8" />
-                            <TextBlock Grid.Row="1" Grid.Column="1"
-                                       Text="{Binding Version}"
-                                       Margin="0,0,0,8" />
-
-                            <TextBlock Grid.Row="2" Grid.Column="0"
-                                       Text="{Tr 'Settings.About_License'}"
-                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                       Margin="0,0,16,0" />
-                            <TextBlock Grid.Row="2" Grid.Column="1"
-                                       Text="{Binding License}" />
-                        </Grid>
-                    </Border>
-                </StackPanel>
-
                 <!-- Nexus Mods (API key) -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="{Tr 'Nexus.SectionTitle'}"
@@ -258,13 +218,6 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
-
-                <!-- Footer -->
-                <TextBlock Text="{Binding Footer}"
-                           Foreground="{StaticResource TextMutedBrush}"
-                           FontSize="12"
-                           HorizontalAlignment="Center"
-                           Margin="0,16,0,0" />
 
             </StackPanel>
         </ScrollViewer>

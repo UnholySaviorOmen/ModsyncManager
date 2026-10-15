@@ -4,33 +4,10 @@
              x:Class="Modsync.Gui.Modules.Pack.Views.PackConfigView"
              x:DataType="vm:PackConfigVM">
 
-    <Grid RowDefinitions="Auto,*,Auto" Margin="20">
-
-        <!-- Header -->
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
-            <TextBlock Grid.Column="0"
-                       Text="{Tr 'Pack.Config.Title'}"
-                       FontSize="24"
-                       FontWeight="Bold"
-                       VerticalAlignment="Center" />
-
-            <StackPanel Grid.Column="1"
-                        Spacing="2"
-                        HorizontalAlignment="Right"
-                        VerticalAlignment="Center">
-                <Button Content="{Tr 'Pack.Config.LoadConfig_Button'}"
-                        Command="{Binding LoadConfigFileCommand}"
-                        Padding="16,8"
-                        HorizontalAlignment="Right" />
-                <TextBlock Text="{Tr 'Pack.Config.LoadConfig_Hint'}"
-                           Foreground="{StaticResource TextMutedBrush}"
-                           FontSize="11"
-                           HorizontalAlignment="Right" />
-            </StackPanel>
-        </Grid>
+    <Grid RowDefinitions="*,Auto" Margin="20">
 
         <!-- Body -->
-        <ScrollViewer Grid.Row="1"
+        <ScrollViewer Grid.Row="0"
                       HorizontalScrollBarVisibility="Disabled"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="20">
@@ -389,7 +366,7 @@
         </ScrollViewer>
 
         <!-- Footer -->
-        <StackPanel Grid.Row="2" Spacing="8" Margin="0,16,0,0">
+        <StackPanel Grid.Row="1" Spacing="8" Margin="0,16,0,0">
 
             <!-- Save path / overwrite warning -->
             <StackPanel Spacing="2">
@@ -412,40 +389,27 @@
                 </TextBlock>
             </StackPanel>
 
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                <Button Grid.Column="0"
-                        Content="{Tr 'Pack.Config.Cancel_Button'}"
+            <!-- Buttons -->
+            <StackPanel Orientation="Horizontal"
+                        Spacing="8"
+                        HorizontalAlignment="Left">
+
+                <Button Content="{Tr 'Pack.Config.Cancel_Button'}"
                         Command="{Binding CancelCommand}"
-                        Padding="20,8"
-                        VerticalAlignment="Center" />
+                        Padding="20,8" />
 
-                <StackPanel Grid.Column="2"
-                            Spacing="2"
-                            Margin="0,0,8,0"
-                            HorizontalAlignment="Right">
-                    <Button Content="{Tr 'Pack.Config.SaveAs_Button'}"
-                            Command="{Binding SaveAsCommand}"
-                            Padding="20,8"
-                            HorizontalAlignment="Right" />
-                    <TextBlock Text="{Tr 'Pack.Config.SaveAs_Hint'}"
-                               Foreground="{StaticResource TextMutedBrush}"
-                               FontSize="11"
-                               HorizontalAlignment="Right" />
-                </StackPanel>
+                <Button Content="{Tr 'Pack.Config.LoadConfig_Button'}"
+                        Command="{Binding LoadConfigFileCommand}"
+                        Padding="20,8" />
 
-                <StackPanel Grid.Column="3"
-                            Spacing="2"
-                            HorizontalAlignment="Right">
-                    <Button Content="{Tr 'Pack.Config.Pack_Button'}"
-                            Command="{Binding PackCommand}"
-                            Padding="20,8"
-                            HorizontalAlignment="Right" />
-                    <TextBlock Text="{Tr 'Pack.Config.Pack_Hint'}"
-                               Foreground="{StaticResource TextMutedBrush}"
-                               FontSize="11"
-                               HorizontalAlignment="Right" />
-                </StackPanel>
-            </Grid>
+                <Button Content="{Tr 'Pack.Config.SaveAs_Button'}"
+                        Command="{Binding SaveAsCommand}"
+                        Padding="20,8" />
+
+                <Button Content="{Tr 'Pack.Config.Pack_Button'}"
+                        Command="{Binding PackCommand}"
+                        Padding="20,8" />
+            </StackPanel>
         </StackPanel>
     </Grid>
 </UserControl>
