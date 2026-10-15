@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Gui.Shared.Services;
@@ -37,6 +38,11 @@ public enum NexusAccountStatus
 /// Не делает валидацию в конструкторе: RefreshAsync вызывается
 /// из SettingsView.axaml.cs при Loaded. Так тесты могут явно
 /// дождаться результата, а показ не тратит ресурсы.
+///
+/// Локализация: StatusText собирается через Loc.Tr + string.Format.
+/// Важно: НЕ используем Loc.Tr(key, arg0, arg1) — C# выбирает
+/// перегрузку (string key, string defaultValue), и форматирование
+/// не срабатывает. Всегда Loc.Tr(key) + string.Format.
 /// </summary>
 public sealed partial class NexusSettingsVM : ViewModel
 {
@@ -81,14 +87,27 @@ public sealed partial class NexusSettingsVM : ViewModel
 
     public string StatusText => Status switch
     {
-        NexusAccountStatus.NotLoggedIn => "Not logged in",
+        NexusAccountStatus.NotLoggedIn =>
+            Loc.Tr("Nexus.Status_NotLoggedIn"),
+
         NexusAccountStatus.LoggedIn =>
-            $"Logged in as {UserName ?? "<unknown>"} " +
-            $"(premium: {(IsPremium ? "yes" : "no")})",
-        NexusAccountStatus.InvalidSaved => "Saved key is invalid or revoked",
-        NexusAccountStatus.NetworkError => "Could not reach Nexus",
-        NexusAccountStatus.Checking => "Checking...",
-        _ => "Unknown",
+            string.Format(
+                Loc.Tr("Nexus.Status_LoggedIn"),
+                UserName ?? "?",
+                IsPremium
+                    ? Loc.Tr("Nexus.Premium_Yes")
+                    : Loc.Tr("Nexus.Premium_No")),
+
+        NexusAccountStatus.InvalidSaved =>
+            Loc.Tr("Nexus.Status_InvalidSaved"),
+
+        NexusAccountStatus.NetworkError =>
+            Loc.Tr("Nexus.Status_NetworkError"),
+
+        NexusAccountStatus.Checking =>
+            Loc.Tr("Nexus.Status_Checking"),
+
+        _ => Loc.Tr("Nexus.Status_Unknown"),
     };
 
     public string StatusColor => Status switch
@@ -176,8 +195,6 @@ public sealed partial class NexusSettingsVM : ViewModel
                     break;
 
                 case NexusKeyStatus.NetworkError:
-                    // Сохраняем последние известные UserName/IsPremium —
-                    // они могли быть из предыдущей успешной валидации.
                     UserName = previousUserName;
                     IsPremium = previousIsPremium;
                     ErrorMessage = result.ErrorMessage;
@@ -234,8 +251,6 @@ public sealed partial class NexusSettingsVM : ViewModel
                     break;
 
                 case NexusKeyStatus.NetworkError:
-                    // В GUI не спрашиваем «сохранить всё равно?» —
-                    // просто показываем ошибку, пользователь повторит.
                     ErrorMessage = result.ErrorMessage
                         ?? "Could not reach Nexus. Try again.";
                     Status = NexusAccountStatus.NotLoggedIn;
@@ -277,8 +292,6 @@ public sealed partial class NexusSettingsVM : ViewModel
         IsPremium = false;
         Status = NexusAccountStatus.NotLoggedIn;
 
-        // ErrorMessage мог быть установлен выше — обнуляем только
-        // если он не от ошибки удаления.
         if (ErrorMessage is not null
             && !ErrorMessage.StartsWith("Failed to remove", StringComparison.Ordinal))
         {

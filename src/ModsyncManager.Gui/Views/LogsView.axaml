@@ -13,19 +13,19 @@
               Margin="0,0,0,16">
 
             <TextBlock Grid.Column="0"
-                       Text="Logs"
+                       Text="{Tr 'Logs.Title'}"
                        FontSize="24"
                        FontWeight="Bold"
                        VerticalAlignment="Center" />
 
             <Button Grid.Column="1"
-                    Content="Open logs folder"
+                    Content="{Tr 'Logs.OpenFolder_Button'}"
                     Command="{Binding OpenLogsFolderCommand}"
                     Padding="12,6"
                     VerticalAlignment="Center" />
         </Grid>
 
-        <!-- LogView на всю высоту -->
+        <!-- LogView -->
         <Border Grid.Row="1"
                 BorderBrush="{StaticResource BorderSubtleBrush}"
                 BorderThickness="1"

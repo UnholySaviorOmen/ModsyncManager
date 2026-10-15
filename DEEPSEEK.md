@@ -1,8 +1,8 @@
 # ModsyncManager — состояние проекта и план работ
 
-**Обновлено:** 2026-10-09
+**Обновлено:** 2026-10-15
 **Всего тестов:** 1319, 0 failed
-**Текущий блок:** 41.4 + 4g закрыты
+**Текущий блок:** локализация GUI (en/ru)
 **Следующий блок:** (не определён)
 
 **Спутные документы:**
@@ -50,8 +50,9 @@ Premium), Фаза 3 (GUI, шаги 3.1–3.8), Фаза 3.9 (редизайн G
 Home-дашборд), Nexus credential UI, nxm:// handler без WebView2,
 v0.2.0 (блоки 1.1, 1.2, 2.1, 3.1, 3.2), блоки 36–40 (patch-архив
 для unmatched, Pack UX rework, восстановление .meta для архивов,
-полировка, Nexus auth pre-flight), блоки 41.1–41.4 (reconcile
-mods/extensions/extras + валидация entry.Name), 4g (лимит логов).
+полировка, Nexus auth pre-flight), блоки 41.1–41.4 (reconcile mods/extensions/extras +
+валидация entry.Name), 4g (лимит логов), локализация GUI
+(CodingSeb.Localization, en/ru, default — ru).
 
 v0.2.0 закрыт 2026-10-01. Отменены: блок 2.2 (глобальный реестр
 `archives.db`), Spectre-прогресс и `--verbose` для CLI, механизм
@@ -107,6 +108,8 @@ DEEPSEEK.md — только по запросу.
 - **Microsoft.Extensions.Logging**.
 - **AvaloniaUseCompiledBindingsByDefault=true** во всех
   GUI-проектах.
+- **CodingSeb.Localization** 1.4.0 (ядро + JSON-загрузчик).
+- **CodingSeb.Localization.Avalonia** 1.3.1 (markup extension `{Tr}`).
 
 ---
 
@@ -132,7 +135,14 @@ DEEPSEEK.md — только по запросу.
 - **v0.2.0, блок 2.1** — persist кеша хешей (2026-09-30).
 - **v0.2.0, блок 3.1** — прогресс Install/Pack (2026-10-01).
 - **v0.2.0, блок 3.2** — UX-ревизия Settings (2026-10-01).
-
+- ✅ **Локализация GUI (en/ru).** `CodingSeb.Localization` +
+  `CodingSeb.Localization.JsonFileLoader` +
+  `CodingSeb.Localization.Avalonia`. Переводы —
+  `src/Modsync.Gui.Shared/Resources/Strings.loc.json` (плоские
+  ключи с точками). Default culture — `"ru"`, выбирается
+  в Settings → Language, сохраняется в `settings.json`.
+  Применяется при старте (перезапуск обязателен).
+- 
 ### Дополнительно
 - ✅ **Блок 35.1** — `PackConfigBuilder` в `Modsync.Pack` (сервис
   сканирования downloads/ + сборки config из формы).
@@ -527,6 +537,22 @@ tests/
   записей, вытесняет старые. На длинных прогонах (pack + install +
   verify подряд с диагностикой unmatched) 200 записей переполнялись
   мгновенно.
+  - **Локализация — `CodingSeb.Localization`.** Плоские ключи
+  с точками в JSON (`"Pack.Title": { "en": "...", "ru": "..." }`).
+  Регистрация JSON-загрузчика в `App.InitializeLocalization`.
+  Default culture — `"ru"`.
+- **Правило `Loc.Tr`:** никогда не вызывать `Loc.Tr(key, arg0, arg1)` —
+  C# выбирает перегрузку `(string key, string defaultValue)`,
+  форматирование не срабатывает. Всегда
+  `string.Format(Loc.Tr(key), arg0, arg1)`.
+- **Смена языка — при перезапуске.** `Loc.Instance.CurrentLanguage`
+  устанавливается один раз в `App.InitializeLocalization` из
+  `SettingsStore.Current.Culture`. Settings → Language меняет
+  настройку и сохраняет, применение — при следующем запуске.
+- **`LocalizationFixture` в тестовых проектах.** Через
+  `[ModuleInitializer]` устанавливает `"en"` в тестовом процессе —
+  независимо от пользовательских настроек. Копирование
+  `Strings.loc.json` в output тестов через `<None Include=...>`.
 
 ### Фаза 3.9 — Дизайн
 
@@ -1027,6 +1053,15 @@ Pre-flight (`PreflightNexusAuthStep`) ловит это ещё раньше:
 - **Виртуализация `ItemsControl` в `LogView`** — 1000 записей
   без виртуализации на современных машинах не тормозят. Если
   окажется иначе — отдельный блок.
+- **Смена языка «на лету».** Требует пересборки всех
+  `ObservableCollection<NavigationItem>` и повторных биндингов.
+  Выбран сценарий «перезапуск приложения».
+- **Локализация валидаторов** (`RelativePathValidator`,
+  `NameValidator`, `SemverValidator`, `XxHash64Value.Parse`,
+  `Uri.TryCreate`). Сообщения технические, для диагностики.
+- **Локализация логов** (`logger.LogInformation` и т. п.). Логи —
+  dev-диагностика, не UI.
+- **Локализация `Console.Error.WriteLine` в `App`.** Dev-диагностика.
 
 ---
 
@@ -1052,6 +1087,35 @@ Pre-flight (`PreflightNexusAuthStep`) ловит это ещё раньше:
 в проект. Исторические обоснования решений — здесь же, в тексте
 записей.
 
+- **2026-10-15** — Локализация GUI (en/ru).
+  - **Стек:** `CodingSeb.Localization` 1.4.0 (ядро + JSON-загрузчик),
+    `CodingSeb.Localization.Avalonia` 1.3.1 (markup extension `{Tr}`).
+    Irihi.Lingua **не подошла** — все версии требуют Avalonia 12.0.3,
+    у нас 11.2.1.
+  - **Формат переводов:** `src/Modsync.Gui.Shared/Resources/Strings.loc.json`,
+    плоские ключи с точками (`"Pack.Title"`), значения — `{ "en": ..., "ru": ... }`.
+    Вложенные объекты CodingSeb не интерпретирует как иерархию ключей.
+  - **Правило:** `Loc.Tr(key)` + `string.Format`. Вызов
+    `Loc.Tr(key, arg0, arg1)` выбирает неверную перегрузку
+    `(string key, string defaultValue)` и возвращает `arg0` вместо
+    форматированной строки.
+  - **`{Tr 'Key'}` в XAML.** Markup extension из
+    `CodingSeb.Localization.Avalonia`. Требует явной
+    `PackageReference` в **каждом** проекте с XAML-компиляцией —
+    транзитивные зависимости `.Avalonia`-пакета не прокидываются.
+  - **Смена языка.** Settings → Language (`ComboBox` с `en`/`ru`).
+    Сохраняется в `settings.json`. Применяется при следующем запуске
+    (`App.InitializeLocalization`). Default culture — `"ru"`.
+  - **Локализовано:** Navigation, Settings (About/Nexus/Nexus Free/Language/App),
+    Pack (главный + Patch Dialog + Config-форма), Install (главный + summary),
+    Verify, Home (карточки + warning), Logs, Cache, LogView, FilePicker.
+    Строки в VM (`ErrorMessage`, `WarningMessage`, `StatusMessage`,
+    `ResultTitle`, `StatusText`) — через `Loc.Tr` + `string.Format`.
+  - **Тесты.** `LocalizationFixture` с `[ModuleInitializer]` в
+    `Modsync.Gui.Shared.Tests` и `Modsync.Gui.Modules.Tests`
+    устанавливает `"en"` — не зависит от настроек пользователя.
+    Копирование `Strings.loc.json` в output тестов через `<None Include=...>`.
+  - **Итог:** `dotnet test` — 1319 тестов, 0 failed.
 - **2026-10-09** — reconcile installer-а и валидация (блоки 41.1–41.4, 4g).
   - **41.1** — `SyncModsStep.AllDirectivesMatch` →
     `ModMatchesManifest`. Обратная проверка: все файлы на диске

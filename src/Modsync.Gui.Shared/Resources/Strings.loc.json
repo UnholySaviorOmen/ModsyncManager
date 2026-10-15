@@ -1,0 +1,790 @@
+{
+  "Navigation.Dashboard": {
+    "en": "Dashboard",
+    "ru": "Дашборд"
+  },
+  "Navigation.Install": {
+    "en": "Install",
+    "ru": "Установка"
+  },
+  "Navigation.Pack": {
+    "en": "Pack",
+    "ru": "Запаковка"
+  },
+  "Navigation.Verify": {
+    "en": "Verify",
+    "ru": "Верификация"
+  },
+  "Navigation.Logs": {
+    "en": "Logs",
+    "ru": "Логи"
+  },
+  "Navigation.Cache": {
+    "en": "Cache",
+    "ru": "Кэш"
+  },
+  "Navigation.Settings": {
+    "en": "Settings",
+    "ru": "Настройки"
+  },
+
+  "Common.Step_Label": {
+    "en": "Step {0} of {1}",
+    "ru": "Шаг {0} из {1}"
+  },
+  "Common.Cancel_Button": {
+    "en": "Cancel",
+    "ru": "Отмена"
+  },
+  "Common.Done_Button": {
+    "en": "Done",
+    "ru": "Готово"
+  },
+  "Common.Cancelled": {
+    "en": "Cancelled.",
+    "ru": "Отменено."
+  },
+
+  "Settings.Title": {
+    "en": "Settings",
+    "ru": "Настройки"
+  },
+  "Settings.About_Title": {
+    "en": "About",
+    "ru": "О программе"
+  },
+  "Settings.About_Name": {
+    "en": "Name",
+    "ru": "Название"
+  },
+  "Settings.About_Version": {
+    "en": "Version",
+    "ru": "Версия"
+  },
+  "Settings.About_License": {
+    "en": "License",
+    "ru": "Лицензия"
+  },
+  "Settings.AppSettings_Title": {
+    "en": "Application settings",
+    "ru": "Настройки приложения"
+  },
+  "Settings.AppSettings_DevMode": {
+    "en": "Developer mode",
+    "ru": "Режим разработчика"
+  },
+  "Settings.AppSettings_DevMode_Description": {
+    "en": "Shows Install, Pack, Verify, Logs and Cache in the sidebar.",
+    "ru": "Показывает Установку, Запаковку, Верификацию, Логи и Кэш в боковой панели."
+  },
+
+  "Nexus.SectionTitle": {
+    "en": "Nexus Mods",
+    "ru": "Nexus Mods"
+  },
+  "Nexus.Status_NotLoggedIn": {
+    "en": "Not logged in",
+    "ru": "Не выполнен вход"
+  },
+  "Nexus.Status_LoggedIn": {
+    "en": "Logged in as {0} (premium: {1})",
+    "ru": "Вы вошли как {0} (premium: {1})"
+  },
+  "Nexus.Status_InvalidSaved": {
+    "en": "Saved key is invalid or revoked",
+    "ru": "Сохранённый ключ недействителен или отозван"
+  },
+  "Nexus.Status_NetworkError": {
+    "en": "Could not reach Nexus",
+    "ru": "Не удалось связаться с Nexus"
+  },
+  "Nexus.Status_Checking": {
+    "en": "Checking...",
+    "ru": "Проверка..."
+  },
+  "Nexus.Status_Unknown": {
+    "en": "Unknown",
+    "ru": "Неизвестно"
+  },
+  "Nexus.Premium_Yes": {
+    "en": "yes",
+    "ru": "да"
+  },
+  "Nexus.Premium_No": {
+    "en": "no",
+    "ru": "нет"
+  },
+  "Nexus.Recheck_Button": {
+    "en": "Re-check",
+    "ru": "Перепроверить"
+  },
+  "Nexus.Logout_Button": {
+    "en": "Log out",
+    "ru": "Выйти"
+  },
+  "Nexus.OpenApiPage_Button": {
+    "en": "Open Nexus API page",
+    "ru": "Открыть страницу Nexus API"
+  },
+  "Nexus.OpenApiPage_Hint": {
+    "en": "Generate a Personal API Key on Nexus.",
+    "ru": "Сгенерируйте Personal API Key на Nexus."
+  },
+  "Nexus.ApiKey_Watermark": {
+    "en": "Paste your Nexus API key",
+    "ru": "Вставьте ваш Nexus API-ключ"
+  },
+  "Nexus.SaveAndValidate_Button": {
+    "en": "Save & validate",
+    "ru": "Сохранить и проверить"
+  },
+
+  "NexusFree.SectionTitle": {
+    "en": "Nexus Free Download",
+    "ru": "Nexus Free Download"
+  },
+  "NexusFree.Status_NotRegistered": {
+    "en": "Free download is disabled. Enable it to register the ModsyncManager nxm:// handler.",
+    "ru": "Free-загрузка отключена. Включите, чтобы зарегистрировать nxm:// handler ModsyncManager."
+  },
+  "NexusFree.Status_RegisteredToUs": {
+    "en": "Free download is enabled. ModsyncManager handles all nxm:// links.",
+    "ru": "Free-загрузка включена. ModsyncManager обрабатывает все nxm:// ссылки."
+  },
+  "NexusFree.Status_RegisteredToOther": {
+    "en": "Another app handles nxm:// links (Vortex, Mod Organizer, or similar). Enabling will replace it — you can restore it later.",
+    "ru": "Ссылки nxm:// обрабатывает другое приложение (Vortex, Mod Organizer или похожее). Включение заменит его — потом можно восстановить."
+  },
+  "NexusFree.Status_Unknown": {
+    "en": "Could not read the current nxm:// handler state.",
+    "ru": "Не удалось прочитать текущее состояние nxm:// handler-а."
+  },
+  "NexusFree.Enable_Button": {
+    "en": "Enable",
+    "ru": "Включить"
+  },
+  "NexusFree.Restore_Button": {
+    "en": "Restore",
+    "ru": "Восстановить"
+  },
+  "NexusFree.Description": {
+    "en": "When enabled, ModsyncManager registers itself as the handler for nxm:// links. Nexus Mods pages will send downloads directly to ModsyncManager. If another app (like Vortex) was handling nxm:// links, its registration is backed up and can be restored with the Restore button.",
+    "ru": "Когда включено, ModsyncManager регистрирует себя как обработчик ссылок nxm://. Страницы Nexus Mods будут отправлять загрузки напрямую в ModsyncManager. Если ссылки nxm:// обрабатывало другое приложение (например, Vortex), его регистрация сохраняется в backup и может быть восстановлена кнопкой «Восстановить»."
+  },
+
+  "Pack.Title": {
+    "en": "Pack",
+    "ru": "Запаковка"
+  },
+  "Pack.StartHeader": {
+    "en": "Start a pack",
+    "ru": "Начать запаковку"
+  },
+  "Pack.LoadConfig_Button": {
+    "en": "Load config…",
+    "ru": "Загрузить конфиг…"
+  },
+  "Pack.LoadConfig_Description": {
+    "en": "Open an existing modsyncmanager-pack.json to edit and pack.",
+    "ru": "Открыть существующий modsyncmanager-pack.json для редактирования и запаковки."
+  },
+  "Pack.CreateConfig_Button": {
+    "en": "Create config…",
+    "ru": "Создать конфиг…"
+  },
+  "Pack.CreateConfig_Description": {
+    "en": "Start from scratch. Recommended if you've never packed this instance before.",
+    "ru": "Начать с нуля. Рекомендуется, если вы ещё не паковали этот инстанс."
+  },
+  "Pack.Success_Title": {
+    "en": "Pack complete",
+    "ru": "Запаковка завершена"
+  },
+  "Pack.Failure_Title": {
+    "en": "Pack failed",
+    "ru": "Запаковка не удалась"
+  },
+  "Pack.Summary_Name": {
+    "en": "Name",
+    "ru": "Название"
+  },
+  "Pack.Summary_Version": {
+    "en": "Version",
+    "ru": "Версия"
+  },
+  "Pack.Summary_Instance": {
+    "en": "Instance",
+    "ru": "Инстанс"
+  },
+  "Pack.Summary_ModsScanned": {
+    "en": "Mods scanned",
+    "ru": "Модов просканировано"
+  },
+  "Pack.Summary_ModsScanned_Value": {
+    "en": "{0} mods, {1} files",
+    "ru": "{0} модов, {1} файлов"
+  },
+  "Pack.Summary_Directives": {
+    "en": "Directives",
+    "ru": "Директивы"
+  },
+  "Pack.Summary_Directives_Value": {
+    "en": "{0} total, {1} from archive",
+    "ru": "{0} всего, {1} из архива"
+  },
+  "Pack.Summary_Archives": {
+    "en": "Archives",
+    "ru": "Архивы"
+  },
+  "Pack.Summary_Archives_Value": {
+    "en": "{0} resolved, {1} unresolved",
+    "ru": "{0} определено, {1} не определено"
+  },
+  "Pack.Summary_Unmatched": {
+    "en": "Unmatched",
+    "ru": "Несопоставленные"
+  },
+  "Pack.Summary_Manifest": {
+    "en": "Manifest",
+    "ru": "Манифест"
+  },
+  "Pack.Summary_Manifest_Value": {
+    "en": "{0} mods, {1} archives, {2} extensions, {3} extras",
+    "ru": "{0} модов, {1} архивов, {2} расширений, {3} дополнений"
+  },
+  "Pack.Summary_MetaIni": {
+    "en": "meta.ini",
+    "ru": "meta.ini"
+  },
+  "Pack.Summary_WrittenTo": {
+    "en": "Written to",
+    "ru": "Записано в"
+  },
+  "Pack.Summary_ManifestPath": {
+    "en": "Manifest path",
+    "ru": "Путь к манифесту"
+  },
+
+  "Pack.Dialog.Unmatched_Title": {
+    "en": "Unmatched files",
+    "ru": "Несопоставленные файлы"
+  },
+  "Pack.Dialog.Unmatched_Subtitle": {
+    "en": "Some files could not be matched to any archive.",
+    "ru": "Некоторые файлы не удалось сопоставить ни с одним архивом."
+  },
+  "Pack.Dialog.Message": {
+    "en": "Found {0} unmatched file(s). They were written to {1}/.",
+    "ru": "Найдено несопоставленных файлов: {0}. Они записаны в {1}/."
+  },
+  "Pack.Dialog.OutputFolder": {
+    "en": "Output folder",
+    "ru": "Папка вывода"
+  },
+  "Pack.Dialog.Description": {
+    "en": "You can ignore these files, open the folder to inspect them manually, or create a patch archive that bundles them into MO2/downloads/. On the next pack, the patch archive will be seen as a regular unresolved archive — provide a download source for it or skip it.",
+    "ru": "Можно игнорировать эти файлы, открыть папку для ручного просмотра или создать патч-архив, который упакует их в MO2/downloads/. При следующей запаковке патч-архив будет виден как обычный нерешённый архив — укажите для него источник загрузки или пропустите."
+  },
+  "Pack.Dialog.PatchCreated_Title": {
+    "en": "Patch archive created",
+    "ru": "Патч-архив создан"
+  },
+  "Pack.Dialog.PatchCreated_Message": {
+    "en": "Patch archive created. On next pack, provide a download source for it or place a .meta file next to it.",
+    "ru": "Патч-архив создан. При следующей запаковке укажите для него источник загрузки или положите рядом .meta-файл."
+  },
+  "Pack.Dialog.Error_Title": {
+    "en": "Error",
+    "ru": "Ошибка"
+  },
+  "Pack.Dialog.Ignore_Button": {
+    "en": "Ignore",
+    "ru": "Игнорировать"
+  },
+  "Pack.Dialog.OpenFolder_Button": {
+    "en": "Open output folder",
+    "ru": "Открыть папку вывода"
+  },
+  "Pack.Dialog.CreatePatch_Button": {
+    "en": "Create patch archive",
+    "ru": "Создать патч-архив"
+  },
+  "Pack.Dialog.NothingToPack": {
+    "en": "Nothing to pack (output folder is empty).",
+    "ru": "Нечего паковать (папка вывода пуста)."
+  },
+  "Pack.Dialog.FolderNotFound": {
+    "en": "Folder not found: {0}",
+    "ru": "Папка не найдена: {0}"
+  },
+  "Pack.Dialog.FailedToOpenFolder": {
+    "en": "Failed to open folder: {0}",
+    "ru": "Не удалось открыть папку: {0}"
+  },
+  "Pack.Dialog.FailedToCreatePatch": {
+    "en": "Failed to create patch: {0}",
+    "ru": "Не удалось создать патч: {0}"
+  },
+
+  "Pack.Config.Title": {
+    "en": "Pack Config",
+    "ru": "Конфиг запаковки"
+  },
+  "Pack.Config.LoadConfig_Button": {
+    "en": "Load config…",
+    "ru": "Загрузить конфиг…"
+  },
+  "Pack.Config.LoadConfig_Hint": {
+    "en": "Load existing config from disk.",
+    "ru": "Загрузить существующий конфиг с диска."
+  },
+  "Pack.Config.Instance_SectionTitle": {
+    "en": "Instance",
+    "ru": "Инстанс"
+  },
+  "Pack.Config.Instance_Folder_Label": {
+    "en": "Instance folder",
+    "ru": "Папка инстанса"
+  },
+  "Pack.Config.Instance_Folder_Watermark": {
+    "en": "Path to MO2 instance folder",
+    "ru": "Путь к папке инстанса MO2"
+  },
+  "Pack.Config.Instance_Browse_Button": {
+    "en": "Browse…",
+    "ru": "Обзор…"
+  },
+  "Pack.Config.Instance_Scanning": {
+    "en": "Scanning instance…",
+    "ru": "Сканирование инстанса…"
+  },
+
+  "Pack.Config.Metadata_SectionTitle": {
+    "en": "Metadata",
+    "ru": "Метаданные"
+  },
+  "Pack.Config.Metadata_Name_Label": {
+    "en": "Name",
+    "ru": "Название"
+  },
+  "Pack.Config.Metadata_Name_Watermark": {
+    "en": "e.g. My Mod Pack",
+    "ru": "например, My Mod Pack"
+  },
+  "Pack.Config.Metadata_Version_Label": {
+    "en": "Version",
+    "ru": "Версия"
+  },
+  "Pack.Config.Metadata_Version_Watermark": {
+    "en": "Semver, e.g. 1.0.0",
+    "ru": "Semver, например 1.0.0"
+  },
+  "Pack.Config.Metadata_Author_Label": {
+    "en": "Author",
+    "ru": "Автор"
+  },
+  "Pack.Config.Metadata_Author_Watermark": {
+    "en": "Your name or handle",
+    "ru": "Ваше имя или ник"
+  },
+  "Pack.Config.Metadata_Game_Label": {
+    "en": "Game",
+    "ru": "Игра"
+  },
+  "Pack.Config.Metadata_Game_Watermark": {
+    "en": "Nexus game domain, e.g. skyrimspecialedition",
+    "ru": "Nexus game domain, например skyrimspecialedition"
+  },
+  "Pack.Config.Metadata_GameVersion_Label": {
+    "en": "Game version",
+    "ru": "Версия игры"
+  },
+  "Pack.Config.Metadata_GameVersion_Watermark": {
+    "en": "e.g. 1.6.1170",
+    "ru": "например 1.6.1170"
+  },
+  "Pack.Config.Metadata_Profile_Label": {
+    "en": "MO2 profile",
+    "ru": "Профиль MO2"
+  },
+
+  "Pack.Config.Mo2Archive_SectionTitle": {
+    "en": "MO2 archive",
+    "ru": "Архив MO2"
+  },
+  "Pack.Config.Mo2Archive_VersionPrefix": {
+    "en": "Version",
+    "ru": "Версия"
+  },
+  "Pack.Config.Mo2Archive_Url_Label": {
+    "en": "URL",
+    "ru": "URL"
+  },
+  "Pack.Config.Mo2Archive_Hash_Label": {
+    "en": "Hash",
+    "ru": "Хеш"
+  },
+  "Pack.Config.Mo2Archive_NotInDownloads": {
+    "en": "not in downloads/",
+    "ru": "нет в downloads/"
+  },
+
+  "Pack.Config.Extensions_SectionTitle": {
+    "en": "Extensions",
+    "ru": "Расширения"
+  },
+  "Pack.Config.Extensions_Hint": {
+    "en": "Paths relative to MO2/. Optional.",
+    "ru": "Пути относительно MO2/. Опционально."
+  },
+  "Pack.Config.Extensions_Watermark": {
+    "en": "e.g. plugins/fomod.dll",
+    "ru": "например plugins/fomod.dll"
+  },
+  "Pack.Config.Extensions_Add_Button": {
+    "en": "+ Add extension",
+    "ru": "+ Добавить расширение"
+  },
+
+  "Pack.Config.Extras_SectionTitle": {
+    "en": "Extras",
+    "ru": "Дополнения"
+  },
+  "Pack.Config.Extras_Hint": {
+    "en": "Paths relative to Stock Game/. Optional.",
+    "ru": "Пути относительно Stock Game/. Опционально."
+  },
+  "Pack.Config.Extras_Watermark": {
+    "en": "e.g. skse64_loader.exe",
+    "ru": "например skse64_loader.exe"
+  },
+  "Pack.Config.Extras_Add_Button": {
+    "en": "+ Add extra",
+    "ru": "+ Добавить дополнение"
+  },
+
+  "Pack.Config.Archives_SectionTitle": {
+    "en": "Archives without metadata",
+    "ru": "Архивы без метаданных"
+  },
+  "Pack.Config.Archives_HeaderFormat": {
+    "en": "Archives without metadata ({0})",
+    "ru": "Архивы без метаданных ({0})"
+  },
+  "Pack.Config.Archives_Hint": {
+    "en": "These archives have no .meta file. Provide a download source for each, or skip them.",
+    "ru": "У этих архивов нет .meta-файла. Укажите источник загрузки для каждого или пропустите."
+  },
+  "Pack.Config.Archives_None": {
+    "en": "All archives have metadata — nothing to fill here.",
+    "ru": "У всех архивов есть метаданные — здесь нечего заполнять."
+  },
+  "Pack.Config.Archives_Url_Watermark": {
+    "en": "https://...",
+    "ru": "https://..."
+  },
+  "Pack.Config.Archives_Hash_Watermark": {
+    "en": "xxh64:...",
+    "ru": "xxh64:..."
+  },
+  "Pack.Config.Archives_AddMirror_Button": {
+    "en": "+ Add mirror",
+    "ru": "+ Добавить зеркало"
+  },
+  "Pack.Config.Archives_Skip_Button": {
+    "en": "Skip",
+    "ru": "Пропустить"
+  },
+  "Pack.Config.Archives_Unskip_Button": {
+    "en": "Unskip",
+    "ru": "Вернуть"
+  },
+  "Pack.Config.Archives_SkippedStatus": {
+    "en": "Skipped — will not be added to archiveSources",
+    "ru": "Пропущено — не будет добавлено в archiveSources"
+  },
+
+  "Pack.Config.Footer_ConfigWillBeSavedTo": {
+    "en": "Config will be saved to:",
+    "ru": "Конфиг будет сохранён в:"
+  },
+  "Pack.Config.Footer_LoadedFrom": {
+    "en": "Loaded from:",
+    "ru": "Загружено из:"
+  },
+  "Pack.Config.Footer_DefaultSavePath": {
+    "en": "<instance folder>/modsyncmanager-pack.json",
+    "ru": "<папка инстанса>/modsyncmanager-pack.json"
+  },
+  "Pack.Config.Footer_OverwriteWarning": {
+    "en": "A config already exists at {0}. Pressing Pack will overwrite it.",
+    "ru": "По пути {0} уже есть конфиг. Нажатие «Запаковать» перезапишет его."
+  },
+  "Pack.Config.Cancel_Button": {
+    "en": "Cancel",
+    "ru": "Отмена"
+  },
+  "Pack.Config.SaveAs_Button": {
+    "en": "Save as…",
+    "ru": "Сохранить как…"
+  },
+  "Pack.Config.SaveAs_Hint": {
+    "en": "Save config without running pack.",
+    "ru": "Сохранить конфиг без запуска запаковки."
+  },
+  "Pack.Config.Pack_Button": {
+    "en": "Pack",
+    "ru": "Запаковать"
+  },
+  "Pack.Config.Pack_Hint": {
+    "en": "Save config and run packer.",
+    "ru": "Сохранить конфиг и запустить запаковку."
+  },
+
+  "Pack.Config.Error_FailedToLoad": {
+    "en": "Failed to load config: {0}",
+    "ru": "Не удалось загрузить конфиг: {0}"
+  },
+  "Pack.Config.Error_FailedToSave": {
+    "en": "Failed to save: {0}",
+    "ru": "Не удалось сохранить: {0}"
+  },
+  "Pack.Config.Error_FailedToSaveConfig": {
+    "en": "Failed to save config: {0}",
+    "ru": "Не удалось сохранить конфиг: {0}"
+  },
+  "Pack.Config.Error_FailedToScan": {
+    "en": "Failed to scan instance: {0}",
+    "ru": "Не удалось просканировать инстанс: {0}"
+  },
+
+  "Install.Title": {
+    "en": "Install",
+    "ru": "Установка"
+  },
+  "Install.ModlistPicker_Placeholder": {
+    "en": "Select modlist.json",
+    "ru": "Выбрать modlist.json"
+  },
+  "Install.TargetPicker_Placeholder": {
+    "en": "Target folder (optional)",
+    "ru": "Целевая папка (опционально)"
+  },
+  "Install.Install_Button": {
+    "en": "Install",
+    "ru": "Установить"
+  },
+  "Install.Cancel_Button": {
+    "en": "Cancel",
+    "ru": "Отмена"
+  },
+  "Install.Done_Button": {
+    "en": "Done",
+    "ru": "Готово"
+  },
+
+  "Install.Success_Title": {
+    "en": "Installation complete",
+    "ru": "Установка завершена"
+  },
+  "Install.Failure_Title": {
+    "en": "Installation failed",
+    "ru": "Установка не удалась"
+  },
+
+  "Install.Summary_Name": {
+    "en": "Name",
+    "ru": "Название"
+  },
+  "Install.Summary_Version": {
+    "en": "Version",
+    "ru": "Версия"
+  },
+  "Install.Summary_Instance": {
+    "en": "Instance",
+    "ru": "Инстанс"
+  },
+  "Install.Summary_Mods": {
+    "en": "Mods",
+    "ru": "Моды"
+  },
+  "Install.Summary_Mods_Value": {
+    "en": "{0} created, {1} skipped",
+    "ru": "{0} создано, {1} пропущено"
+  },
+  "Install.Summary_Archives": {
+    "en": "Archives",
+    "ru": "Архивы"
+  },
+  "Install.Summary_Archives_Value": {
+    "en": "{0} downloaded, {1} present",
+    "ru": "{0} скачано, {1} уже было"
+  },
+  "Install.Summary_MetaIni": {
+    "en": "meta.ini",
+    "ru": "meta.ini"
+  },
+  "Install.Summary_ArchiveMeta": {
+    "en": "Archive .meta",
+    "ru": "Archive .meta"
+  },
+
+  "Verify.Title": {
+    "en": "Verify",
+    "ru": "Верификация"
+  },
+  "Verify.TargetPicker_Placeholder": {
+    "en": "Select instance folder to verify",
+    "ru": "Выберите папку инстанса для верификации"
+  },
+  "Verify.Verify_Button": {
+    "en": "Verify",
+    "ru": "Проверить"
+  },
+  "Verify.Cancel_Button": {
+    "en": "Cancel",
+    "ru": "Отмена"
+  },
+  "Verify.Done_Button": {
+    "en": "Done",
+    "ru": "Готово"
+  },
+
+  "Verify.InProgress_Title": {
+    "en": "Verifying…",
+    "ru": "Проверка…"
+  },
+
+  "Verify.Result_AllPassed": {
+    "en": "All checks passed",
+    "ru": "Все проверки пройдены"
+  },
+  "Verify.Result_FailedFormat": {
+    "en": "{0} check(s) failed",
+    "ru": "Провалено проверок: {0}"
+  },
+
+  "Verify.Passed_Label": {
+    "en": "Passed:",
+    "ru": "Пройдено:"
+  },
+  "Verify.Failed_Label": {
+    "en": "Failed:",
+    "ru": "Провалено:"
+  },
+
+  "Verify.ShowAllChecks": {
+    "en": "Show all checks (verbose)",
+    "ru": "Показать все проверки (подробно)"
+  },
+
+  "Verify.Failure_Title": {
+    "en": "Verify failed",
+    "ru": "Верификация не удалась"
+  },
+
+  "Home.Title": {
+    "en": "Dashboard",
+    "ru": "Дашборд"
+  },
+  "Home.Install_Button": {
+    "en": "Install",
+    "ru": "Установить"
+  },
+  "Home.Update_Button": {
+    "en": "Update",
+    "ru": "Обновить"
+  },
+  "Home.OpenMo2_Button": {
+    "en": "Open MO2",
+    "ru": "Открыть MO2"
+  },
+  "Home.Mo2NotFound": {
+    "en": "ModOrganizer.exe not found. Reinstall the pack to restore MO2.",
+    "ru": "ModOrganizer.exe не найден. Переустановите сборку, чтобы восстановить MO2."
+  },
+  "Home.FailedToOpenMo2": {
+    "en": "Failed to open ModOrganizer.exe: {0}",
+    "ru": "Не удалось открыть ModOrganizer.exe: {0}"
+  },
+
+  "Logs.Title": {
+    "en": "Logs",
+    "ru": "Логи"
+  },
+  "Logs.OpenFolder_Button": {
+    "en": "Open logs folder",
+    "ru": "Открыть папку с логами"
+  },
+  "LogView.Header": {
+    "en": "Log",
+    "ru": "Лог"
+  },
+  "LogView.Clear_Button": {
+    "en": "Clear",
+    "ru": "Очистить"
+  },
+
+  "Cache.Title": {
+    "en": "Cache",
+    "ru": "Кэш"
+  },
+  "Cache.HashCache_SectionTitle": {
+    "en": "Hash cache",
+    "ru": "Кэш хешей"
+  },
+  "Cache.HashCache_Clear_Button": {
+    "en": "Clear hash cache",
+    "ru": "Очистить кэш хешей"
+  },
+  "Cache.HashCache_Description": {
+    "en": "ModsyncManager caches file hashes to speed up repeated pack/install/verify runs. Clearing the cache is safe — hashes will be recomputed on the next run.",
+    "ru": "ModsyncManager кеширует хеши файлов, чтобы ускорить повторные запаковки, установки и верификации. Очистка кэша безопасна — хеши будут пересчитаны при следующем запуске."
+  },
+  "Cache.HashCacheCleared": {
+    "en": "Hash cache cleared.",
+    "ru": "Кэш хешей очищен."
+  },
+  "Cache.HashCacheClearFailed": {
+    "en": "Failed to clear: {0}",
+    "ru": "Не удалось очистить: {0}"
+  },
+  "Cache.NoCacheFile": {
+    "en": "No cache file yet.",
+    "ru": "Файла кэша пока нет."
+  },
+  "Cache.SizeUnknown": {
+    "en": "Unknown.",
+    "ru": "Неизвестно."
+  },
+
+  "FilePicker.FileNotFound": {
+    "en": "File not found",
+    "ru": "Файл не найден"
+  },
+  "FilePicker.FolderNotFound": {
+    "en": "Folder not found",
+    "ru": "Папка не найдена"
+  },
+
+  "Settings.Language_SectionTitle": {
+    "en": "Language",
+    "ru": "Язык"
+  },
+  "Settings.Language_Label": {
+    "en": "Interface language",
+    "ru": "Язык интерфейса"
+  },
+  "Settings.Language_RestartHint": {
+    "en": "Restart ModsyncManager to apply the new language.",
+    "ru": "Перезапустите ModsyncManager, чтобы применить новый язык."
+  },
+  "Settings.Language_English": {
+    "en": "English",
+    "ru": "English"
+  },
+  "Settings.Language_Russian": {
+    "en": "Русский",
+    "ru": "Русский"
+  }
+}

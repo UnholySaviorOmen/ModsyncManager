@@ -8,6 +8,8 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="CodingSeb.Localization" />
+    <PackageReference Include="CodingSeb.Localization.Avalonia" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Modsync.Gui.Shared\Modsync.Gui.Shared.csproj" />

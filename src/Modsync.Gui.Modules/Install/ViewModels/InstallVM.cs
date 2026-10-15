@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Core;
@@ -47,6 +48,24 @@ public sealed partial class InstallVM : ProgressViewModel, IInstallTarget
     public FilePickerVM TargetPicker { get; }
     public LogVM Log { get; }
 
+    // ------------------------------------------------------------------
+    //  Computed: summary (локализованные строки с плейсхолдерами)
+    // ------------------------------------------------------------------
+
+    public string ModsSummaryText => Summary is null
+        ? ""
+        : string.Format(
+            Loc.Tr("Install.Summary_Mods_Value"),
+            Summary.ModsCreated,
+            Summary.ModsSkipped);
+
+    public string ArchivesSummaryText => Summary is null
+        ? ""
+        : string.Format(
+            Loc.Tr("Install.Summary_Archives_Value"),
+            Summary.ArchivesDownloaded,
+            Summary.ArchivesAlreadyPresent);
+
     public InstallVM(
         IInstallRunner runner,
         IFilePickerService picker,
@@ -59,7 +78,7 @@ public sealed partial class InstallVM : ProgressViewModel, IInstallTarget
 
         ModlistPicker = new FilePickerVM(picker)
         {
-            Placeholder = "Select modlist.json",
+            Placeholder = Loc.Tr("Install.ModlistPicker_Placeholder"),
             FilterHint = ".json",
             MustExist = true,
             Folder = false,
@@ -72,7 +91,7 @@ public sealed partial class InstallVM : ProgressViewModel, IInstallTarget
 
         TargetPicker = new FilePickerVM(picker)
         {
-            Placeholder = "Target folder (optional)",
+            Placeholder = Loc.Tr("Install.TargetPicker_Placeholder"),
             MustExist = false,
             Folder = true,
         };
@@ -108,7 +127,7 @@ public sealed partial class InstallVM : ProgressViewModel, IInstallTarget
         catch (Exception ex) when (CancellationHelper.IsCancellation(ex))
         {
             _logger.LogInformation("Install cancelled by user");
-            ErrorMessage = "Cancelled.";
+            ErrorMessage = Loc.Tr("Common.Cancelled");
             State = InstallState.Configuration;
         }
         catch (Exception ex)
@@ -150,6 +169,12 @@ public sealed partial class InstallVM : ProgressViewModel, IInstallTarget
         UpdateVisibility();
         InstallCommand.NotifyCanExecuteChanged();
         CancelCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnSummaryChanged(InstallSummary? value)
+    {
+        OnPropertyChanged(nameof(ModsSummaryText));
+        OnPropertyChanged(nameof(ArchivesSummaryText));
     }
 
     private void UpdateVisibility()

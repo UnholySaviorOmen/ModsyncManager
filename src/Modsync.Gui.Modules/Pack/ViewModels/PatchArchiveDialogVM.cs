@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Gui.Shared.Services;
@@ -10,16 +11,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Modsync.Gui.Modules.Pack.ViewModels;
 
-/// <summary>
-/// VM диалога «Unmatched files» после pack.
-///
-/// Показывается, когда PackSummary.UnmatchedFiles > 0. Даёт пользователю
-/// три опции: игнорировать, открыть папку __ModsyncManager_Output/,
-/// или собрать patch-архив ModsyncManager_Output.zip в downloads/.
-///
-/// После Ignore или успешного создания архива — событие Closed.
-/// PackVM ловит его и закрывает диалог.
-/// </summary>
 public sealed partial class PatchArchiveDialogVM : ViewModel
 {
     private const string OutputDirName = "__ModsyncManager_Output";
@@ -28,10 +19,6 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
     private readonly IProcessLauncher _launcher;
     private readonly ILogger<PatchArchiveDialogVM> _logger;
     private readonly string _instancePath;
-
-    // ------------------------------------------------------------------
-    //  ObservableProperty-поля
-    // ------------------------------------------------------------------
 
     [ObservableProperty]
     private string? _patchPath;
@@ -42,17 +29,15 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
     [ObservableProperty]
     private bool _isBusy;
 
-    // ------------------------------------------------------------------
-    //  Производные
-    // ------------------------------------------------------------------
-
     public int UnmatchedCount { get; }
 
     public string OutputPath { get; }
 
     public string Message =>
-        $"Found {UnmatchedCount} unmatched file(s). " +
-        $"They were written to {OutputDirName}/.";
+        string.Format(
+            Loc.Tr("Pack.Dialog.Message"),
+            UnmatchedCount,
+            OutputDirName);
 
     public bool HasPatch => !string.IsNullOrEmpty(PatchPath);
 
@@ -61,23 +46,10 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
 
     public string PatchCreatedMessage =>
         HasPatch
-            ? $"Patch archive created. On next pack, provide a download source " +
-              $"for it or place a .meta file next to it."
+            ? Loc.Tr("Pack.Dialog.PatchCreated_Message")
             : "";
 
-    // ------------------------------------------------------------------
-    //  Events
-    // ------------------------------------------------------------------
-
-    /// <summary>
-    /// Срабатывает, когда диалог должен закрыться.
-    /// PackVM ловит и ставит IsPatchDialogOpen = false.
-    /// </summary>
     public event Action? Closed;
-
-    // ------------------------------------------------------------------
-    //  Constructor
-    // ------------------------------------------------------------------
 
     public PatchArchiveDialogVM(
         PatchArchiveBuilder builder,
@@ -95,10 +67,6 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
         OutputPath = Path.Combine(instancePath, OutputDirName);
     }
 
-    // ------------------------------------------------------------------
-    //  Commands
-    // ------------------------------------------------------------------
-
     [RelayCommand]
     private void Ignore()
     {
@@ -115,7 +83,9 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
         {
             _logger.LogWarning(
                 "Output folder does not exist: {Path}", OutputPath);
-            ErrorMessage = $"Folder not found: {OutputPath}";
+            ErrorMessage = string.Format(
+                Loc.Tr("Pack.Dialog.FolderNotFound"),
+                OutputPath);
             return;
         }
 
@@ -127,7 +97,9 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
         {
             _logger.LogWarning(ex,
                 "Failed to open output folder: {Path}", OutputPath);
-            ErrorMessage = $"Failed to open folder: {ex.Message}";
+            ErrorMessage = string.Format(
+                Loc.Tr("Pack.Dialog.FailedToOpenFolder"),
+                ex.Message);
         }
     }
 
@@ -147,7 +119,7 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
             {
                 _logger.LogWarning(
                     "PatchArchiveBuilder returned null — nothing to pack");
-                ErrorMessage = "Nothing to pack (output folder is empty).";
+                ErrorMessage = Loc.Tr("Pack.Dialog.NothingToPack");
                 return;
             }
 
@@ -158,7 +130,9 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to create patch archive");
-            ErrorMessage = $"Failed to create patch: {ex.Message}";
+            ErrorMessage = string.Format(
+                Loc.Tr("Pack.Dialog.FailedToCreatePatch"),
+                ex.Message);
         }
         finally
         {
@@ -168,10 +142,6 @@ public sealed partial class PatchArchiveDialogVM : ViewModel
     }
 
     private bool CanCreatePatch() => !IsBusy;
-
-    // ------------------------------------------------------------------
-    //  Property change notifications
-    // ------------------------------------------------------------------
 
     partial void OnPatchPathChanged(string? value)
     {

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Platform.Nexus.Protocol;
@@ -11,20 +12,8 @@ namespace Modsync.Gui.Shared.ViewModels;
 /// <summary>
 /// VM секции «Nexus Free Download» в Settings.
 ///
-/// Управляет регистрацией nxm:// handler-а:
-///   - показывает текущий статус (наш / чужой / нет);
-///   - RegisterCommand — регистрирует наш handler
-///     (с backup предыдущего);
-///   - RestoreCommand — восстанавливает предыдущий handler
-///     из backup-файла;
-///   - RefreshCommand — перечитывает статус из реестра.
-///
-/// Разделение Refresh:
-///   - RefreshAsync (публичный) — сбрасывает ErrorMessage
-///     и перечитывает State. Вызывается из View при Loaded.
-///   - RefreshStateCore (private) — только перечитывает State,
-///     не трогает ErrorMessage. Вызывается из finally в
-///     Register/Restore, чтобы не затирать установленную ошибку.
+/// Управляет регистрацией nxm:// handler-а. Локализация StatusText —
+/// через Loc.Tr. Смена языка применяется при перезапуске приложения.
 /// </summary>
 public sealed partial class NexusFreeDownloadSettingsVM : ViewModel
 {
@@ -60,22 +49,18 @@ public sealed partial class NexusFreeDownloadSettingsVM : ViewModel
     public string StatusText => State switch
     {
         ProtocolRegistrationState.NotRegistered =>
-            "Free download is disabled. " +
-            "Enable it to register the ModsyncManager nxm:// handler.",
+            Loc.Tr("NexusFree.Status_NotRegistered"),
 
         ProtocolRegistrationState.RegisteredToUs =>
-            "Free download is enabled. " +
-            "ModsyncManager handles all nxm:// links.",
+            Loc.Tr("NexusFree.Status_RegisteredToUs"),
 
         ProtocolRegistrationState.RegisteredToOther =>
-            "Another app handles nxm:// links " +
-            "(Vortex, Mod Organizer, or similar). " +
-            "Enabling will replace it — you can restore it later.",
+            Loc.Tr("NexusFree.Status_RegisteredToOther"),
 
         ProtocolRegistrationState.Unknown =>
-            "Could not read the current nxm:// handler state.",
+            Loc.Tr("NexusFree.Status_Unknown"),
 
-        _ => "Unknown state.",
+        _ => Loc.Tr("Nexus.Status_Unknown"),
     };
 
     public string StatusColor => State switch
@@ -108,10 +93,6 @@ public sealed partial class NexusFreeDownloadSettingsVM : ViewModel
     //  Refresh
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Публичный Refresh: сбрасывает ErrorMessage, перечитывает State.
-    /// Вызывается из View при Loaded и из RefreshCommand.
-    /// </summary>
     [RelayCommand]
     public Task RefreshAsync()
     {
@@ -120,10 +101,6 @@ public sealed partial class NexusFreeDownloadSettingsVM : ViewModel
         return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Внутренний Refresh: только State, без ErrorMessage.
-    /// Вызывается из finally в Register/Restore.
-    /// </summary>
     private void RefreshStateCore()
     {
         try

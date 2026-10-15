@@ -11,7 +11,7 @@
               ColumnDefinitions="*,Auto"
               Margin="0,0,0,16">
             <TextBlock Grid.Column="0"
-                       Text="Dashboard"
+                       Text="{Tr 'Home.Title'}"
                        FontSize="24"
                        FontWeight="Bold"
                        VerticalAlignment="Center" />
@@ -46,17 +46,17 @@
                                            FontSize="13"
                                            Foreground="{StaticResource TextSecondaryBrush}" />
 
-                                <!-- Кнопки -->
+                                <!-- Buttons -->
                                 <StackPanel Orientation="Horizontal"
                                             Spacing="8"
                                             Margin="0,8,0,0">
-                                    <Button Content="Install"
+                                    <Button Content="{Tr 'Home.Install_Button'}"
                                             Command="{Binding InstallCommand}"
                                             Padding="16,8" />
-                                    <Button Content="Update"
+                                    <Button Content="{Tr 'Home.Update_Button'}"
                                             Command="{Binding UpdateCommand}"
                                             Padding="16,8" />
-                                    <Button Content="Open MO2"
+                                    <Button Content="{Tr 'Home.OpenMo2_Button'}"
                                             Command="{Binding OpenMo2Command}"
                                             Padding="16,8" />
                                 </StackPanel>

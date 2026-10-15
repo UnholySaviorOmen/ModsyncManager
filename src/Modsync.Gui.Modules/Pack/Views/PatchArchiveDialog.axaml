@@ -3,7 +3,7 @@
         xmlns:vm="using:Modsync.Gui.Modules.Pack.ViewModels"
         x:Class="Modsync.Gui.Modules.Pack.Views.PatchArchiveDialog"
         x:DataType="vm:PatchArchiveDialogVM"
-        Title="Unmatched files"
+        Title="{Tr 'Pack.Dialog.Unmatched_Title'}"
         Width="600"
         Height="400"
         CanResize="False"
@@ -14,10 +14,10 @@
 
         <!-- Header -->
         <StackPanel Grid.Row="0" Spacing="6" Margin="0,0,0,16">
-            <TextBlock Text="Unmatched files"
+            <TextBlock Text="{Tr 'Pack.Dialog.Unmatched_Title'}"
                        FontSize="20"
                        FontWeight="SemiBold" />
-            <TextBlock Text="Some files could not be matched to any archive."
+            <TextBlock Text="{Tr 'Pack.Dialog.Unmatched_Subtitle'}"
                        Foreground="{StaticResource TextSecondaryBrush}"
                        FontSize="13" />
         </StackPanel>
@@ -40,7 +40,7 @@
                                    TextWrapping="Wrap" />
 
                         <StackPanel Spacing="4">
-                            <TextBlock Text="Output folder"
+                            <TextBlock Text="{Tr 'Pack.Dialog.OutputFolder'}"
                                        Foreground="{StaticResource TextSecondaryBrush}"
                                        FontSize="12" />
                             <TextBlock Text="{Binding OutputPath}"
@@ -50,16 +50,10 @@
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
-                        <TextBlock TextWrapping="Wrap"
+                        <TextBlock Text="{Tr 'Pack.Dialog.Description'}"
+                                   TextWrapping="Wrap"
                                    Foreground="{StaticResource TextMutedBrush}"
-                                   FontSize="11">
-                            You can ignore these files, open the folder to
-                            inspect them manually, or create a patch archive
-                            that bundles them into MO2/downloads/. On the
-                            next pack, the patch archive will be seen as a
-                            regular unresolved archive — provide a download
-                            source for it or skip it.
-                        </TextBlock>
+                                   FontSize="11" />
                     </StackPanel>
                 </Border>
 
@@ -71,7 +65,7 @@
                         Padding="16"
                         IsVisible="{Binding HasPatch}">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Patch archive created"
+                        <TextBlock Text="{Tr 'Pack.Dialog.PatchCreated_Title'}"
                                    FontWeight="SemiBold"
                                    Foreground="{StaticResource SuccessBrush}" />
 
@@ -96,7 +90,7 @@
                         Padding="16"
                         IsVisible="{Binding HasError}">
                     <StackPanel Spacing="8">
-                        <TextBlock Text="Error"
+                        <TextBlock Text="{Tr 'Pack.Dialog.Error_Title'}"
                                    FontWeight="SemiBold"
                                    Foreground="{StaticResource ErrorBrush}" />
                         <TextBlock Text="{Binding ErrorMessage}"
@@ -114,19 +108,19 @@
               Margin="0,16,0,0">
 
             <Button Grid.Column="0"
-                    Content="Ignore"
+                    Content="{Tr 'Pack.Dialog.Ignore_Button'}"
                     Command="{Binding IgnoreCommand}"
                     Padding="20,8" />
 
             <Button Grid.Column="2"
-                    Content="Open output folder"
+                    Content="{Tr 'Pack.Dialog.OpenFolder_Button'}"
                     Command="{Binding OpenFolderCommand}"
                     Padding="20,8"
                     Margin="0,0,8,0"
                     IsEnabled="{Binding !IsBusy}" />
 
             <Button Grid.Column="3"
-                    Content="Create patch archive"
+                    Content="{Tr 'Pack.Dialog.CreatePatch_Button'}"
                     Command="{Binding CreatePatchCommand}"
                     Padding="20,8"
                     IsEnabled="{Binding !IsBusy}" />

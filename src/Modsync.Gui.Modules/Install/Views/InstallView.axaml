@@ -6,9 +6,6 @@
              x:DataType="vm:InstallVM">
 
     <UserControl.Styles>
-        <!-- Спиннер: дуга, вращающаяся вокруг центра.
-             PathIcon 24x24 viewBox, Path строится через SVG-подобный синтаксис.
-             RotateTransform.Angle анимируется 0 → 360 за 1 секунду. -->
         <Style Selector="PathIcon.spinner">
             <Setter Property="Width" Value="14" />
             <Setter Property="Height" Value="14" />
@@ -35,7 +32,7 @@
         <!-- Header -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
             <TextBlock Grid.Column="0"
-                       Text="Install"
+                       Text="{Tr 'Install.Title'}"
                        FontSize="24"
                        FontWeight="Bold"
                        VerticalAlignment="Center" />
@@ -54,7 +51,7 @@
                        FontSize="12"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-            <Button Content="Install"
+            <Button Content="{Tr 'Install.Install_Button'}"
                     Command="{Binding InstallCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />
@@ -67,24 +64,18 @@
                     VerticalAlignment="Center"
                     HorizontalAlignment="Stretch">
 
-            <!-- Step name -->
             <TextBlock Text="{Binding StepName}"
                        FontSize="16"
                        HorizontalAlignment="Center" />
 
-            <!-- Step X of Y · Detail ⟳ (одна строка) -->
             <StackPanel Orientation="Horizontal"
                         Spacing="6"
                         HorizontalAlignment="Center">
 
-                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                <TextBlock Text="{Binding StepLabel}"
+                           Foreground="{StaticResource TextMutedBrush}"
                            FontSize="12"
-                           VerticalAlignment="Center">
-                    <Run Text="Step " />
-                    <Run Text="{Binding CurrentStep}" />
-                    <Run Text=" of " />
-                    <Run Text="{Binding TotalSteps}" />
-                </TextBlock>
+                           VerticalAlignment="Center" />
 
                 <TextBlock Text="·"
                            Foreground="{StaticResource TextMutedBrush}"
@@ -106,13 +97,12 @@
                 </PathIcon>
             </StackPanel>
 
-            <!-- Progress bar -->
             <ProgressBar Value="{Binding Percent}"
                          Minimum="0"
                          Maximum="100"
                          Height="6" />
 
-            <Button Content="Cancel"
+            <Button Content="{Tr 'Install.Cancel_Button'}"
                     Command="{Binding CancelCommand}"
                     HorizontalAlignment="Center"
                     Padding="20,8" />
@@ -123,7 +113,7 @@
                     Spacing="12"
                     IsVisible="{Binding IsSuccess}"
                     VerticalAlignment="Top">
-            <TextBlock Text="Installation complete"
+            <TextBlock Text="{Tr 'Install.Success_Title'}"
                        FontSize="18"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource SuccessBrush}" />
@@ -135,17 +125,17 @@
                     Padding="16">
                 <Grid ColumnDefinitions="Auto,*"
                       RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Name"
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Tr 'Install.Summary_Name'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="0" Grid.Column="1"
                                Text="{Binding Summary.Name}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Version"
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Tr 'Install.Summary_Version'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="1" Grid.Column="1"
                                Text="{Binding Summary.Version}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Instance"
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Tr 'Install.Summary_Instance'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="2" Grid.Column="1"
                                Text="{Binding Summary.InstancePath}"
@@ -154,38 +144,30 @@
                                TextTrimming="CharacterEllipsis"
                                Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Mods"
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{Tr 'Install.Summary_Mods'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
-                    <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,4">
-                        <Run Text="{Binding Summary.ModsCreated}" />
-                        <Run Text=" created, " />
-                        <Run Text="{Binding Summary.ModsSkipped}" />
-                        <Run Text=" skipped" />
-                    </TextBlock>
+                    <TextBlock Grid.Row="3" Grid.Column="1"
+                               Text="{Binding ModsSummaryText}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Archives"
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{Tr 'Install.Summary_Archives'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
-                    <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,0,0,4">
-                        <Run Text="{Binding Summary.ArchivesDownloaded}" />
-                        <Run Text=" downloaded, " />
-                        <Run Text="{Binding Summary.ArchivesAlreadyPresent}" />
-                        <Run Text=" present" />
-                    </TextBlock>
+                    <TextBlock Grid.Row="4" Grid.Column="1"
+                               Text="{Binding ArchivesSummaryText}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="meta.ini"
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{Tr 'Install.Summary_MetaIni'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="5" Grid.Column="1"
                                Text="{Binding Summary.MetaIniWritten}"
                                Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Archive .meta"
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{Tr 'Install.Summary_ArchiveMeta'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,0" />
                     <TextBlock Grid.Row="6" Grid.Column="1"
                                Text="{Binding Summary.ArchiveMetaWritten}" />
                 </Grid>
             </Border>
 
-            <Button Content="Done"
+            <Button Content="{Tr 'Install.Done_Button'}"
                     Command="{Binding DoneCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />
@@ -196,7 +178,7 @@
                     Spacing="12"
                     IsVisible="{Binding IsFailure}"
                     VerticalAlignment="Top">
-            <TextBlock Text="Installation failed"
+            <TextBlock Text="{Tr 'Install.Failure_Title'}"
                        FontSize="18"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource ErrorBrush}" />
@@ -212,7 +194,7 @@
                            FontSize="12" />
             </Border>
 
-            <Button Content="Done"
+            <Button Content="{Tr 'Install.Done_Button'}"
                     Command="{Binding DoneCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />

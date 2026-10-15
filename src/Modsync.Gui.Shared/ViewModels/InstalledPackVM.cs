@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Gui.Shared.Models;
@@ -9,25 +10,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Modsync.Gui.Shared.ViewModels;
 
-/// <summary>
-/// VM одной карточки на Dashboard-дашборде.
-///
-/// Три команды:
-///   - OpenMo2  — всегда активна. Проверяет наличие ModOrganizer.exe
-///                в момент клика; если нет — выставляет WarningMessage.
-///   - Install  — InstallRequested(&lt;InstancePath&gt;/modlist.json, InstancePath).
-///   - Update   — диалог выбора нового modlist.json; если юзер выбрал,
-///                InstallRequested(выбранный, InstancePath). Отмена — no-op.
-///
-/// WarningMessage — inline-предупреждение под кнопками; стирается
-/// только при следующем Refresh() (карточка пересоздаётся).
-/// </summary>
 public sealed partial class InstalledPackVM : ViewModel
 {
     private const string Mo2DirName = "MO2";
     private const string ModOrganizerExeName = "ModOrganizer.exe";
-    private const string NotFoundMessage =
-        "ModOrganizer.exe not found. Reinstall the pack to restore MO2.";
     private const string PickManifestTitle = "Select new modlist.json";
     private const string PickManifestFilter = ".json";
 
@@ -85,7 +71,7 @@ public sealed partial class InstalledPackVM : ViewModel
         {
             _logger.LogWarning(
                 "ModOrganizer.exe not found: {Path}", mo2ExePath);
-            WarningMessage = NotFoundMessage;
+            WarningMessage = Loc.Tr("Home.Mo2NotFound");
             return;
         }
 
@@ -99,7 +85,9 @@ public sealed partial class InstalledPackVM : ViewModel
         {
             _logger.LogError(ex,
                 "Failed to open ModOrganizer.exe: {Path}", mo2ExePath);
-            WarningMessage = $"Failed to open ModOrganizer.exe: {ex.Message}";
+            WarningMessage = string.Format(
+                Loc.Tr("Home.FailedToOpenMo2"),
+                ex.Message);
         }
     }
 

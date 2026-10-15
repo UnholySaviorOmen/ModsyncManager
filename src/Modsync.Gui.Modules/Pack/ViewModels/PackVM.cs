@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Core;
@@ -24,13 +25,9 @@ namespace Modsync.Gui.Modules.Pack.ViewModels;
 /// (открывает пустую форму). Обе кнопки открывают embedded-форму
 /// PackConfigVM.
 ///
-/// Форма либо загружает config из файла, либо пустая. При нажатии
-/// Pack внутри формы сохраняет config на диск и поднимает
-/// ConfigCreated(input). PackVM ловит событие, запускает pipeline
-/// через IPackRunner.RunFromConfigBuilderAsync.
-///
-/// После успешного pack, если PackSummary.UnmatchedFiles > 0,
-/// показывается модальный диалог через IPatchDialogService.
+/// Локализация: ErrorMessage через Loc.Tr. Computed-свойства
+/// Summary собираются через string.Format(Loc.Tr(key), args)
+/// — не Loc.Tr(key, args), т.к. C# выбирает не ту перегрузку.
 /// </summary>
 public sealed partial class PackVM : ProgressViewModel
 {
@@ -39,10 +36,6 @@ public sealed partial class PackVM : ProgressViewModel
     private readonly IFilePickerService _picker;
     private readonly ILogger<PackVM> _logger;
     private CancellationTokenSource? _cts;
-
-    // ------------------------------------------------------------------
-    //  ObservableProperty-поля
-    // ------------------------------------------------------------------
 
     [ObservableProperty]
     private PackState _state = PackState.Configuration;
@@ -65,13 +58,6 @@ public sealed partial class PackVM : ProgressViewModel
     [ObservableProperty]
     private string? _errorMessage;
 
-    // ------------------------------------------------------------------
-    //  Config form (embedded)
-    //  Имя свойства — ConfigVM (тип PackConfigVM).
-    //  Имя класса и свойства не должны совпадать (CS0542), поэтому
-    //  свойство называется ConfigVM, а не PackConfigVM.
-    // ------------------------------------------------------------------
-
     [ObservableProperty]
     private PackConfigVM? _configVM;
 
@@ -79,6 +65,40 @@ public sealed partial class PackVM : ProgressViewModel
     private bool _isCreatingConfig;
 
     public LogVM Log { get; }
+
+    // ------------------------------------------------------------------
+    //  Computed: summary (локализованные строки с плейсхолдерами)
+    // ------------------------------------------------------------------
+
+    public string ModsScannedText => Summary is null
+        ? ""
+        : string.Format(
+            Loc.Tr("Pack.Summary_ModsScanned_Value"),
+            Summary.ModsScanned,
+            Summary.FilesScanned);
+
+    public string DirectivesText => Summary is null
+        ? ""
+        : string.Format(
+            Loc.Tr("Pack.Summary_Directives_Value"),
+            Summary.DirectivesTotal,
+            Summary.DirectivesFromArchive);
+
+    public string ArchivesText => Summary is null
+        ? ""
+        : string.Format(
+            Loc.Tr("Pack.Summary_Archives_Value"),
+            Summary.ArchivesResolved,
+            Summary.ArchivesUnresolved);
+
+    public string ManifestText => Summary is null
+        ? ""
+        : string.Format(
+            Loc.Tr("Pack.Summary_Manifest_Value"),
+            Summary.ManifestMods,
+            Summary.ManifestArchives,
+            Summary.ManifestExtensions,
+            Summary.ManifestExtras);
 
     public PackVM(
         IPackRunner runner,
@@ -100,10 +120,6 @@ public sealed partial class PackVM : ProgressViewModel
     //  Load config… (из файла)
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Открывает file picker на modsyncmanager-pack.json, резолвит
-    /// путь, создаёт PackConfigVM и вызывает LoadConfigAsync(path).
-    /// </summary>
     [RelayCommand]
     private async Task LoadConfigAsync()
     {
@@ -123,8 +139,6 @@ public sealed partial class PackVM : ProgressViewModel
         ConfigVM = vm;
         IsCreatingConfig = true;
 
-        // Загружаем config в форму. Ошибки парсинга — ErrorMessage
-        // внутри PackConfigVM, форма остаётся открытой.
         await vm.LoadConfigAsync(picked);
     }
 
@@ -241,7 +255,7 @@ public sealed partial class PackVM : ProgressViewModel
         catch (Exception ex) when (CancellationHelper.IsCancellation(ex))
         {
             _logger.LogInformation("Pack cancelled by user");
-            ErrorMessage = "Cancelled.";
+            ErrorMessage = Loc.Tr("Common.Cancelled");
             State = PackState.Configuration;
         }
         catch (Exception ex)
@@ -283,6 +297,14 @@ public sealed partial class PackVM : ProgressViewModel
     partial void OnIsCreatingConfigChanged(bool value)
     {
         UpdateVisibility();
+    }
+
+    partial void OnSummaryChanged(PackSummary? value)
+    {
+        OnPropertyChanged(nameof(ModsScannedText));
+        OnPropertyChanged(nameof(DirectivesText));
+        OnPropertyChanged(nameof(ArchivesText));
+        OnPropertyChanged(nameof(ManifestText));
     }
 
     private void UpdateVisibility()

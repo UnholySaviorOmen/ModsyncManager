@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Core;
 using Modsync.Core.Archives;
@@ -8,16 +9,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Modsync.Gui.Shared.ViewModels;
 
-/// <summary>
-/// VM экрана Cache — технические базы Modsync Manager.
-///
-/// Сейчас: одна база — cache.db (persist хешей файлов).
-/// В блоке 2.2 появится archives.db (глобальный реестр архивов).
-/// Структура экрана заложена так, чтобы вторая секция добавлялась
-/// без переделки.
-///
-/// Экран виден только в DevMode (NavigationVM фильтрует).
-/// </summary>
 public sealed partial class CacheVM : ViewModel
 {
     private readonly IHashCache _hashCache;
@@ -25,7 +16,7 @@ public sealed partial class CacheVM : ViewModel
 
     public string HashCachePath => ModsyncPaths.CacheDbFile;
 
-    public string _hashCacheSizeText = "Unknown.";
+    public string _hashCacheSizeText = "";
     public string HashCacheSizeText
     {
         get => _hashCacheSizeText;
@@ -65,7 +56,7 @@ public sealed partial class CacheVM : ViewModel
         try
         {
             _hashCache.Clear();
-            StatusMessage = "Hash cache cleared.";
+            StatusMessage = Loc.Tr("Cache.HashCacheCleared");
             _logger.LogInformation("Hash cache cleared by user.");
 
             RefreshHashCacheSize();
@@ -73,7 +64,9 @@ public sealed partial class CacheVM : ViewModel
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to clear hash cache.");
-            StatusMessage = $"Failed to clear: {ex.Message}";
+            StatusMessage = string.Format(
+                Loc.Tr("Cache.HashCacheClearFailed"),
+                ex.Message);
         }
     }
 
@@ -85,7 +78,7 @@ public sealed partial class CacheVM : ViewModel
 
             if (!File.Exists(path))
             {
-                HashCacheSizeText = "No cache file yet.";
+                HashCacheSizeText = Loc.Tr("Cache.NoCacheFile");
                 return;
             }
 
@@ -94,7 +87,7 @@ public sealed partial class CacheVM : ViewModel
         }
         catch
         {
-            HashCacheSizeText = "Unknown.";
+            HashCacheSizeText = Loc.Tr("Cache.SizeUnknown");
         }
     }
 

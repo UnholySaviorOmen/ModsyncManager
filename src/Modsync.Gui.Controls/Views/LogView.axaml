@@ -12,14 +12,14 @@
               ColumnDefinitions="*,Auto"
               Background="{StaticResource SurfaceRaisedBrush}">
             <TextBlock Grid.Column="0"
-                       Text="Log"
+                       Text="{Tr 'LogView.Header'}"
                        Foreground="{StaticResource TextSecondaryBrush}"
                        Margin="12,8"
                        FontSize="12"
                        FontWeight="SemiBold"
                        VerticalAlignment="Center" />
             <Button Grid.Column="1"
-                    Content="Clear"
+                    Content="{Tr 'LogView.Clear_Button'}"
                     Command="{Binding ClearCommand}"
                     Margin="8,6"
                     Padding="12,4"

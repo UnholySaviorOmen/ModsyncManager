@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Collections.ObjectModel;
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Core.Models.Manifest.Sources;
@@ -15,23 +16,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Modsync.Gui.Modules.Pack.ViewModels;
 
-/// <summary>
-/// VM формы конфига Packer-а.
-///
-/// Два сценария:
-///   1. Load config — форма открывается с заполненными полями
-///      из существующего modsyncmanager-pack.json.
-///   2. Create config — форма открывается пустой.
-///
-/// На выходе (Pack) сохраняет config на диск и поднимает
-/// ConfigCreated с PackConfigBuilderInput.
-///
-/// Save as… сохраняет config, не запуская packer.
-///
-/// Пути сохранения:
-///   - Loaded: _loadedConfigPath (тот же файл, откуда загрузили).
-///   - Created: &lt;InstancePath&gt;/modsyncmanager-pack.json.
-/// </summary>
 public sealed partial class PackConfigVM : ViewModel
 {
     private const string DefaultConfigFileName = "modsyncmanager-pack.json";
@@ -40,24 +24,10 @@ public sealed partial class PackConfigVM : ViewModel
     private readonly IFilePickerService _picker;
     private readonly ILogger<PackConfigVM> _logger;
 
-    /// <summary>
-    /// Путь к файлу, из которого загружен config, или null если
-    /// форма создана с нуля. Используется для сохранения при Pack.
-    /// </summary>
     private string? _loadedConfigPath;
 
-    /// <summary>
-    /// Archive sources из загруженного config, для которых нет
-    /// соответствующего файла в downloads/. Не отображаются в UI,
-    /// но сохраняются в BuildInput — чтобы при возврате файла в
-    /// downloads/ source остался.
-    /// </summary>
     private readonly Dictionary<string, PackArchiveSource> _orphanedSources =
         new(StringComparer.OrdinalIgnoreCase);
-
-    // ------------------------------------------------------------------
-    //  ObservableProperty-поля
-    // ------------------------------------------------------------------
 
     [ObservableProperty]
     private string? _instancePath;
@@ -104,7 +74,9 @@ public sealed partial class PackConfigVM : ViewModel
     public bool HasUnresolvedArchives => UnresolvedArchives.Count > 0;
 
     public string UnresolvedArchivesHeader =>
-        $"Archives without metadata ({UnresolvedArchives.Count})";
+        string.Format(
+            Loc.Tr("Pack.Config.Archives_HeaderFormat"),
+            UnresolvedArchives.Count);
 
     public bool HasProfiles => AvailableProfiles.Count > 0;
 
@@ -136,7 +108,7 @@ public sealed partial class PackConfigVM : ViewModel
             try
             {
                 if (!File.Exists(path))
-                    return "not in downloads/";
+                    return Loc.Tr("Pack.Config.Mo2Archive_NotInDownloads");
 
                 return FormatSize(new FileInfo(path).Length);
             }
@@ -151,9 +123,6 @@ public sealed partial class PackConfigVM : ViewModel
     //  Save path display / overwrite warning
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Куда будет сохранён config при нажатии Pack.
-    /// </summary>
     public string SavePathDisplay
     {
         get
@@ -162,17 +131,12 @@ public sealed partial class PackConfigVM : ViewModel
                 return _loadedConfigPath;
 
             if (string.IsNullOrWhiteSpace(InstancePath))
-                return $"<instance folder>/{DefaultConfigFileName}";
+                return Loc.Tr("Pack.Config.Footer_DefaultSavePath");
 
             return Path.Combine(InstancePath, DefaultConfigFileName);
         }
     }
 
-    /// <summary>
-    /// Предупреждение «overwrite existing config», показывается
-    /// только для НЕ загруженного config (когда мы собираемся
-    /// писать в дефолтное место, а там уже что-то есть).
-    /// </summary>
     public string? OverwriteWarning
     {
         get
@@ -187,8 +151,9 @@ public sealed partial class PackConfigVM : ViewModel
             if (!File.Exists(path))
                 return null;
 
-            return $"A config already exists at {path}. " +
-                   $"Pressing Pack will overwrite it.";
+            return string.Format(
+                Loc.Tr("Pack.Config.Footer_OverwriteWarning"),
+                path);
         }
     }
 
@@ -196,15 +161,8 @@ public sealed partial class PackConfigVM : ViewModel
     //  Events
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Срабатывает, когда пользователь нажал Pack. Config уже
-    /// сохранён на диск. PackVM запускает pipeline.
-    /// </summary>
     public event Action<PackConfigBuilderInput>? ConfigCreated;
 
-    /// <summary>
-    /// Срабатывает, когда пользователь нажал Cancel.
-    /// </summary>
     public event Action? Cancelled;
 
     // ------------------------------------------------------------------
@@ -225,12 +183,6 @@ public sealed partial class PackConfigVM : ViewModel
     //  Public API for PackVM
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Загрузить config из файла и заполнить форму.
-    /// Вызывается из формы через LoadConfigFileCommand.
-    ///
-    /// При ошибке — ErrorMessage, форма остаётся пустой.
-    /// </summary>
     public async Task LoadConfigAsync(string configPath, CancellationToken ct = default)
     {
         try
@@ -240,7 +192,6 @@ public sealed partial class PackConfigVM : ViewModel
             _loadedConfigPath = Path.GetFullPath(configPath);
             LoadedFromPath = _loadedConfigPath;
 
-            // instance.path — относительный, резолвим от папки config.
             var configDir = Path.GetDirectoryName(_loadedConfigPath)
                 ?? throw new InvalidOperationException(
                     $"Cannot determine config directory: {_loadedConfigPath}");
@@ -256,13 +207,10 @@ public sealed partial class PackConfigVM : ViewModel
             SelectedGame = config.Meta.Game;
             GameVersion = config.Meta.GameVersion;
 
-            // Сначала сканируем инстанс (создаём UnresolvedArchiveRowVM).
             await RefreshFromInstanceAsync();
 
-            // Профиль мог быть другим, чем Default из списка — установим явно.
             SelectedProfile = config.Mo2.Profile;
 
-            // Extensions/Extras.
             Extensions.Clear();
             foreach (var ext in config.Mo2.Extensions)
             {
@@ -279,9 +227,6 @@ public sealed partial class PackConfigVM : ViewModel
                 Extras.Add(vm);
             }
 
-            // archiveSources: заполняем url/hash у существующих row,
-            // если имя архива совпало. Записи без файла в downloads/
-            // сохраняем в _orphanedSources.
             ApplyArchiveSources(config.ArchiveSources);
 
             _logger.LogInformation(
@@ -296,13 +241,14 @@ public sealed partial class PackConfigVM : ViewModel
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load config: {Path}", configPath);
-            ErrorMessage = $"Failed to load config: {ex.Message}";
+            ErrorMessage = string.Format(
+                Loc.Tr("Pack.Config.Error_FailedToLoad"),
+                ex.Message);
         }
     }
 
     private void ApplyArchiveSources(IReadOnlyList<PackArchiveSource> sources)
     {
-        // Индекс: имя архива → row.
         var byName = UnresolvedArchives
             .ToDictionary(a => a.FileName, StringComparer.OrdinalIgnoreCase);
 
@@ -312,7 +258,6 @@ public sealed partial class PackConfigVM : ViewModel
         {
             if (!byName.TryGetValue(source.Archive, out var row))
             {
-                // Архива нет в downloads/ — сохраняем скрыто.
                 _orphanedSources[source.Archive] = source;
                 _logger.LogDebug(
                     "Orphaned archive source (not in downloads/): {Archive}",
@@ -403,8 +348,6 @@ public sealed partial class PackConfigVM : ViewModel
 
         var input = BuildInput();
 
-        // Сохраняем config. Если save упал — ErrorMessage, событие
-        // НЕ поднимаем, pack не запускается.
         var savedPath = await TrySaveConfigAsync(input);
         if (savedPath is null)
             return;
@@ -486,7 +429,9 @@ public sealed partial class PackConfigVM : ViewModel
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save pack config");
-            ErrorMessage = $"Failed to save: {ex.Message}";
+            ErrorMessage = string.Format(
+                Loc.Tr("Pack.Config.Error_FailedToSave"),
+                ex.Message);
         }
     }
 
@@ -504,13 +449,6 @@ public sealed partial class PackConfigVM : ViewModel
     //  Internal save
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Сохраняет config в _loadedConfigPath, либо в дефолтный
-    /// &lt;InstancePath&gt;/modsyncmanager-pack.json.
-    ///
-    /// Возвращает путь сохранения при успехе, null при ошибке
-    /// (ErrorMessage выставлен).
-    /// </summary>
     private async Task<string?> TrySaveConfigAsync(PackConfigBuilderInput input)
     {
         var target = _loadedConfigPath
@@ -528,7 +466,9 @@ public sealed partial class PackConfigVM : ViewModel
         {
             _logger.LogError(ex,
                 "Failed to save config: {Path}", target);
-            ErrorMessage = $"Failed to save config: {ex.Message}";
+            ErrorMessage = string.Format(
+                Loc.Tr("Pack.Config.Error_FailedToSaveConfig"),
+                ex.Message);
             return null;
         }
     }
@@ -589,8 +529,6 @@ public sealed partial class PackConfigVM : ViewModel
             foreach (var p in profiles)
                 AvailableProfiles.Add(p);
 
-            // Не сбрасываем SelectedProfile, если он уже установлен
-            // (например, при Load config). Установим только если null.
             if (string.IsNullOrWhiteSpace(SelectedProfile) && profiles.Count > 0)
                 SelectedProfile = profiles[0];
 
@@ -629,7 +567,9 @@ public sealed partial class PackConfigVM : ViewModel
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to scan instance");
-            ErrorMessage = $"Failed to scan instance: {ex.Message}";
+            ErrorMessage = string.Format(
+                Loc.Tr("Pack.Config.Error_FailedToScan"),
+                ex.Message);
         }
         finally
         {
@@ -659,8 +599,6 @@ public sealed partial class PackConfigVM : ViewModel
             .Select(a => a.ToPackArchiveSource())
             .ToList();
 
-        // Добавляем "осиротевшие" source-ы (не видны в UI, но
-        // сохраняются в config).
         archiveSources.AddRange(_orphanedSources.Values);
 
         var meta = new PackMeta

@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 UnholySaviorOmen
 // SPDX-License-Identifier: GPL-3.0-only
 
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Gui.Shared.Services;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Modsync.Gui.Shared.ViewModels.Controls;
 
@@ -59,7 +59,9 @@ public sealed partial class FilePickerVM : ObservableObject
             if (!exists)
             {
                 IsValid = false;
-                Error = Folder ? "Folder not found" : "File not found";
+                Error = Folder
+                    ? Loc.Tr("FilePicker.FolderNotFound")
+                    : Loc.Tr("FilePicker.FileNotFound");
                 return;
             }
         }

@@ -30,6 +30,11 @@
     <ProjectReference Include="..\ModsyncManager.NxmHandler\ModsyncManager.NxmHandler.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="CodingSeb.Localization" />
+    <PackageReference Include="CodingSeb.Localization.Avalonia" />
+    <PackageReference Include="CodingSeb.Localization.JsonFileLoader" />
+  </ItemGroup>
+  <ItemGroup>
     <AvaloniaResource Include="Assets\app.ico" />
   </ItemGroup>
 </Project>

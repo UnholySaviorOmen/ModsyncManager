@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System.Collections.ObjectModel;
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Modsync.Core;
@@ -64,8 +65,10 @@ public sealed partial class VerifyVM : ViewModel
     public string ResultTitle => Report switch
     {
         null => "",
-        { IsOk: true } => "All checks passed",
-        _ => $"{Report.FailedCount} check(s) failed",
+        { IsOk: true } => Loc.Tr("Verify.Result_AllPassed"),
+        _ => string.Format(
+            Loc.Tr("Verify.Result_FailedFormat"),
+            Report.FailedCount),
     };
 
     public string ResultColor => IsOk ? "#7fc98a" : "#d97777";
@@ -84,7 +87,7 @@ public sealed partial class VerifyVM : ViewModel
 
         TargetPicker = new FilePickerVM(picker)
         {
-            Placeholder = "Select instance folder to verify",
+            Placeholder = Loc.Tr("Verify.TargetPicker_Placeholder"),
             MustExist = true,
             Folder = true,
         };
@@ -98,7 +101,6 @@ public sealed partial class VerifyVM : ViewModel
     public void SetNavigateHome(Action navigateHome)
     {
         // Оставлено для совместимости с INavigationAware.
-        // В UI кнопка Home заменена на Done (3.9.6).
     }
 
     [RelayCommand(CanExecute = nameof(CanVerify))]
@@ -123,7 +125,7 @@ public sealed partial class VerifyVM : ViewModel
         catch (Exception ex) when (CancellationHelper.IsCancellation(ex))
         {
             _logger.LogInformation("Verify cancelled by user");
-            ErrorMessage = "Cancelled.";
+            ErrorMessage = Loc.Tr("Common.Cancelled");
             State = VerifyState.Configuration;
         }
         catch (Exception ex)
@@ -186,10 +188,6 @@ public sealed partial class VerifyVM : ViewModel
     //  Построение строк
     // ------------------------------------------------------------------
 
-    /// <summary>
-    /// Заполняет Rows. По умолчанию — только Failures.
-    /// При ShowAllChecks — все Checks.
-    /// </summary>
     private void RebuildRows()
     {
         Rows.Clear();
@@ -209,11 +207,6 @@ public sealed partial class VerifyVM : ViewModel
         }
     }
 
-    /// <summary>
-    /// Уведомить UI, что производные свойства результата изменились.
-    /// CommunityToolkit не отслеживает computed properties — зовём вручную
-    /// после присвоения Report.
-    /// </summary>
     private void NotifyResultChanged()
     {
         OnPropertyChanged(nameof(IsOk));

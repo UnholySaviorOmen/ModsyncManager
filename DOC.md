@@ -1,7 +1,7 @@
 # ModsyncManager — Справочник
 
-**Версия документа:** 6.1
-**Обновлено:** 2026-10-05
+**Версия документа:** 6.2
+**Обновлено:** 2026-10-15
 
 Формальный справочник по форматам, pipeline и обработке ошибок.
 Состояние проекта и план работ — в `DEEPSEEK.md`.
@@ -25,6 +25,7 @@
     - 6.9. [Формат nxm-handler-backup.json](#формат-nxm-handler-backupjson)
     - 6.10. [Структура HKCU\Software\Classes\nxm](#структура-hkcusoftwareclassesnxm)
     - 6.11. [Логи GUI](#логи-gui)
+    - 6.12. [Локализация GUI](#локализация-gui)
 7. [Идентификация архивов](#идентификация-архивов)
 8. [Nexus game domain](#nexus-game-domain)
 9. [Формат файлов MO2](#формат-файлов-mo2)
@@ -784,6 +785,73 @@ HKEY_CURRENT_USER\Software\Classes\nxm\shell\open\command
 
 **Открыть папку с логами:** кнопка «Open logs folder» на экране
 Logs (DevMode).
+
+### Локализация GUI
+
+**Стек:** `CodingSeb.Localization` 1.4.0 (ядро +
+`CodingSeb.Localization.JsonFileLoader`),
+`CodingSeb.Localization.Avalonia` 1.3.1 (markup extension `{Tr}`).
+
+**Файл переводов:**
+`src/Modsync.Gui.Shared/Resources/Strings.loc.json`.
+
+**Формат:** плоские ключи с точками. Вложенные объекты CodingSeb
+не интерпретирует как иерархию ключей — все ключи должны быть
+на верхнем уровне с полным путём в имени.
+
+```json
+{
+  "Pack.Title": {
+    "en": "Pack",
+    "ru": "Запаковка"
+  },
+  "Nexus.Status_LoggedIn": {
+    "en": "Logged in as {0} (premium: {1})",
+    "ru": "Вы вошли как {0} (premium: {1})"
+  }
+}
+```
+
+**Плейсхолдеры:** `{0}`, `{1}`, ... — как в `string.Format`.
+В коде: `string.Format(Loc.Tr("Key"), arg0, arg1)`.
+
+**Правило:** никогда не вызывать `Loc.Tr(key, arg0, arg1)` — C#
+выбирает перегрузку `(string key, string defaultValue)` и
+возвращает `arg0` вместо форматированной строки.
+
+**В XAML:** `Text="{Tr 'Pack.Title'}"`. Требует явной
+`PackageReference` на `CodingSeb.Localization.Avalonia` в проекте,
+где компилируется XAML — транзитивные зависимости
+`.Avalonia`-пакета не прокидываются в XAML-компилятор.
+
+**Культура:** `Settings.Culture` (`"en"` / `"ru"`, default `"ru"`).
+Применяется в `App.InitializeLocalization` — один раз при старте.
+Смена языка в UI (Settings → Language) требует **перезапуска
+приложения**.
+
+**Локализовано:**
+
+- Navigation (сайдбар).
+- Settings: About, Nexus, Nexus Free Download, Language, App settings.
+- Pack: главный экран, Patch Archive Dialog, Config-форма.
+- Install: главный экран, summary.
+- Verify: главный экран, ResultTitle, Passed/Failed.
+- Home: карточки сборок, warning.
+- Logs, Cache, LogView, FilePicker.
+
+**Не локализуется:**
+
+- Логи (`logger.LogInformation` и т. п.) — dev-диагностика.
+- `Console.Error.WriteLine` в `App`.
+- Сообщения валидаторов (`RelativePathValidator`,
+  `NameValidator`, `SemverValidator`, `XxHash64Value.Parse`,
+  `Uri.TryCreate`) — технические.
+- Пути, имена файлов, URL, hex-значения хешей.
+- Названия языков (`English` / `Русский`).
+
+**Файл `Strings.loc.json`** копируется в output через
+`<None Update="Resources\Strings.loc.json">` в
+`Modsync.Gui.Shared.csproj`.
 
 ---
 

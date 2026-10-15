@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: GPL-3.0-only
 
 using System;
+using System.IO;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using CodingSeb.Localization;
+using CodingSeb.Localization.Loaders;
 using Modsync.Gui.Modules;
 using ModsyncManager.Gui.Services;
 using Modsync.Gui.Shared;
@@ -24,6 +27,8 @@ namespace ModsyncManager.Gui;
 
 public partial class App : Application
 {
+    private const string DefaultCulture = "ru";
+
     public static IServiceProvider Services { get; private set; } = null!;
 
     public override void Initialize()
@@ -38,6 +43,8 @@ public partial class App : Application
         {
             Services = BuildServices();
 
+            InitializeLocalization();
+
             desktop.MainWindow = new MainWindow
             {
                 DataContext = Services.GetRequiredService<MainWindowVM>(),
@@ -49,6 +56,51 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    // ------------------------------------------------------------------
+    //  Localization
+    // ------------------------------------------------------------------
+
+    private static void InitializeLocalization()
+    {
+        LocalizationLoader.Instance.FileLanguageLoaders.Add(new JsonFileLoader());
+
+        var stringsPath = Path.Combine(
+            AppContext.BaseDirectory, "Resources", "Strings.loc.json");
+
+        if (File.Exists(stringsPath))
+        {
+            LocalizationLoader.Instance.AddFile(stringsPath);
+        }
+        else
+        {
+            Console.Error.WriteLine(
+                $"Localization file not found: {stringsPath}. " +
+                $"Falling back to raw keys.");
+        }
+
+        // Культура из настроек. Если SettingsStore не зарегистрирован
+        // или Culture пуст — fallback на "ru" (наша дефолтная локаль).
+        var culture = DefaultCulture;
+
+        try
+        {
+            var settings = Services.GetService<ISettingsStore>();
+            if (settings is not null
+                && !string.IsNullOrWhiteSpace(settings.Current.Culture))
+            {
+                culture = settings.Current.Culture;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(
+                $"Failed to read culture from settings: {ex.Message}. " +
+                $"Using default '{DefaultCulture}'.");
+        }
+
+        Loc.Instance.CurrentLanguage = culture;
     }
 
     // ------------------------------------------------------------------

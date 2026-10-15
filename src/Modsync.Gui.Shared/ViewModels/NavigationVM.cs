@@ -3,7 +3,9 @@
 
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using CodingSeb.Localization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.DependencyInjection;
 using Modsync.Gui.Shared.Navigation;
 
 namespace Modsync.Gui.Shared.ViewModels;
@@ -21,6 +23,10 @@ namespace Modsync.Gui.Shared.ViewModels;
 ///
 /// _suppressCallback защищает от рекурсии: SelectScreen и RebuildItems
 /// меняют SelectedItem программно, не желая дёргать callback.
+///
+/// Локализация: заголовки пунктов берутся через Loc.Tr(key).
+/// При смене языка приложения вызывается RebuildItems() — Items
+/// пересобираются с новыми локализованными строками.
 /// </summary>
 public sealed partial class NavigationVM : ViewModel
 {
@@ -54,15 +60,11 @@ public sealed partial class NavigationVM : ViewModel
         _suppressCallback = false;
     }
 
-    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(SettingsVM.IsDevMode))
-            return;
-
-        RebuildItems();
-    }
-
-    private void RebuildItems()
+    /// <summary>
+    /// Пересобрать список пунктов. Вызывается при смене DevMode
+    /// и при смене языка (заголовки локализуются через Loc.Tr).
+    /// </summary>
+    public void RebuildItems()
     {
         var previousScreen = SelectedItem?.Screen;
 
@@ -79,22 +81,30 @@ public sealed partial class NavigationVM : ViewModel
         _navigate(ScreenType.Home);
     }
 
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SettingsVM.IsDevMode))
+            return;
+
+        RebuildItems();
+    }
+
     private void RebuildItemsCore()
     {
         Items.Clear();
 
-        Items.Add(new NavigationItem("Dashboard", ScreenType.Home));
+        Items.Add(new NavigationItem(Loc.Tr("Navigation.Dashboard"), ScreenType.Home));
 
         if (_settings.IsDevMode)
         {
-            Items.Add(new NavigationItem("Install", ScreenType.Install));
-            Items.Add(new NavigationItem("Pack", ScreenType.Pack));
-            Items.Add(new NavigationItem("Verify", ScreenType.Verify));
-            Items.Add(new NavigationItem("Logs", ScreenType.Logs));
-            Items.Add(new NavigationItem("Cache", ScreenType.Cache));
+            Items.Add(new NavigationItem(Loc.Tr("Navigation.Install"), ScreenType.Install));
+            Items.Add(new NavigationItem(Loc.Tr("Navigation.Pack"), ScreenType.Pack));
+            Items.Add(new NavigationItem(Loc.Tr("Navigation.Verify"), ScreenType.Verify));
+            Items.Add(new NavigationItem(Loc.Tr("Navigation.Logs"), ScreenType.Logs));
+            Items.Add(new NavigationItem(Loc.Tr("Navigation.Cache"), ScreenType.Cache));
         }
 
-        Items.Add(new NavigationItem("Settings", ScreenType.Settings));
+        Items.Add(new NavigationItem(Loc.Tr("Navigation.Settings"), ScreenType.Settings));
     }
 
     partial void OnSelectedItemChanged(NavigationItem? value)

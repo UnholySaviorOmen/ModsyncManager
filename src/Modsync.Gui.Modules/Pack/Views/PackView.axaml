@@ -6,9 +6,6 @@
              x:DataType="vm:PackVM">
 
     <UserControl.Styles>
-        <!-- Спиннер: дуга, вращающаяся вокруг центра.
-             PathIcon 24x24 viewBox, Path строится через SVG-подобный синтаксис.
-             RotateTransform.Angle анимируется 0 → 360 за 1 секунду. -->
         <Style Selector="PathIcon.spinner">
             <Setter Property="Width" Value="14" />
             <Setter Property="Height" Value="14" />
@@ -35,7 +32,7 @@
         <!-- Header -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
             <TextBlock Grid.Column="0"
-                       Text="Pack"
+                       Text="{Tr 'Pack.Title'}"
                        FontSize="24"
                        FontWeight="Bold"
                        VerticalAlignment="Center" />
@@ -47,26 +44,26 @@
                     IsVisible="{Binding IsConfiguring}"
                     VerticalAlignment="Top">
 
-            <TextBlock Text="Start a pack"
+            <TextBlock Text="{Tr 'Pack.StartHeader'}"
                        FontSize="16"
                        FontWeight="SemiBold"
                        Margin="0,0,0,4" />
 
-            <Button Content="Load config…"
+            <Button Content="{Tr 'Pack.LoadConfig_Button'}"
                     Command="{Binding LoadConfigCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />
-            <TextBlock Text="Open an existing modsyncmanager-pack.json to edit and pack."
+            <TextBlock Text="{Tr 'Pack.LoadConfig_Description'}"
                        Foreground="{StaticResource TextMutedBrush}"
                        FontSize="11"
                        Margin="0,-8,0,0" />
 
-            <Button Content="Create config…"
+            <Button Content="{Tr 'Pack.CreateConfig_Button'}"
                     Command="{Binding CreateConfigCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8"
                     Margin="0,8,0,0" />
-            <TextBlock Text="Start from scratch. Recommended if you've never packed this instance before."
+            <TextBlock Text="{Tr 'Pack.CreateConfig_Description'}"
                        Foreground="{StaticResource TextMutedBrush}"
                        FontSize="11"
                        Margin="0,-8,0,0" />
@@ -77,8 +74,8 @@
                        TextWrapping="Wrap"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
         </StackPanel>
-        
-        <!-- Config form (embedded, replaces Configuration) -->
+
+        <!-- Config form (embedded) -->
         <ContentControl Grid.Row="1"
                         Content="{Binding ConfigVM}"
                         IsVisible="{Binding IsCreatingConfig}"
@@ -95,19 +92,14 @@
                        FontSize="16"
                        HorizontalAlignment="Center" />
 
-            <!-- Step X of Y · Detail ⟳ -->
             <StackPanel Orientation="Horizontal"
                         Spacing="6"
                         HorizontalAlignment="Center">
 
-                <TextBlock Foreground="{StaticResource TextMutedBrush}"
+                <TextBlock Text="{Binding StepLabel}"
+                           Foreground="{StaticResource TextMutedBrush}"
                            FontSize="12"
-                           VerticalAlignment="Center">
-                    <Run Text="Step " />
-                    <Run Text="{Binding CurrentStep}" />
-                    <Run Text=" of " />
-                    <Run Text="{Binding TotalSteps}" />
-                </TextBlock>
+                           VerticalAlignment="Center" />
 
                 <TextBlock Text="·"
                            Foreground="{StaticResource TextMutedBrush}"
@@ -134,7 +126,7 @@
                          Maximum="100"
                          Height="6" />
 
-            <Button Content="Cancel"
+            <Button Content="{Tr 'Common.Cancel_Button'}"
                     Command="{Binding CancelCommand}"
                     HorizontalAlignment="Center"
                     Padding="20,8" />
@@ -145,7 +137,7 @@
                     Spacing="12"
                     IsVisible="{Binding IsSuccess}"
                     VerticalAlignment="Top">
-            <TextBlock Text="Pack complete"
+            <TextBlock Text="{Tr 'Pack.Success_Title'}"
                        FontSize="18"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource SuccessBrush}" />
@@ -157,17 +149,17 @@
                     Padding="16">
                 <Grid ColumnDefinitions="Auto,*"
                       RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Name"
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Tr 'Pack.Summary_Name'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="0" Grid.Column="1"
                                Text="{Binding Summary.Name}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Version"
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Tr 'Pack.Summary_Version'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="1" Grid.Column="1"
                                Text="{Binding Summary.Version}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Instance"
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="{Tr 'Pack.Summary_Instance'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="2" Grid.Column="1"
                                Text="{Binding Summary.InstancePath}"
@@ -176,59 +168,39 @@
                                TextTrimming="CharacterEllipsis"
                                Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="3" Grid.Column="0" Text="Mods scanned"
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="{Tr 'Pack.Summary_ModsScanned'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
-                    <TextBlock Grid.Row="3" Grid.Column="1" Margin="0,0,0,4">
-                        <Run Text="{Binding Summary.ModsScanned}" />
-                        <Run Text=" mods, " />
-                        <Run Text="{Binding Summary.FilesScanned}" />
-                        <Run Text=" files" />
-                    </TextBlock>
+                    <TextBlock Grid.Row="3" Grid.Column="1"
+                               Text="{Binding ModsScannedText}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="4" Grid.Column="0" Text="Directives"
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="{Tr 'Pack.Summary_Directives'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
-                    <TextBlock Grid.Row="4" Grid.Column="1" Margin="0,0,0,4">
-                        <Run Text="{Binding Summary.DirectivesTotal}" />
-                        <Run Text=" total, " />
-                        <Run Text="{Binding Summary.DirectivesFromArchive}" />
-                        <Run Text=" from archive" />
-                    </TextBlock>
+                    <TextBlock Grid.Row="4" Grid.Column="1"
+                               Text="{Binding DirectivesText}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="5" Grid.Column="0" Text="Archives"
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="{Tr 'Pack.Summary_Archives'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
-                    <TextBlock Grid.Row="5" Grid.Column="1" Margin="0,0,0,4">
-                        <Run Text="{Binding Summary.ArchivesResolved}" />
-                        <Run Text=" resolved, " />
-                        <Run Text="{Binding Summary.ArchivesUnresolved}" />
-                        <Run Text=" unresolved" />
-                    </TextBlock>
+                    <TextBlock Grid.Row="5" Grid.Column="1"
+                               Text="{Binding ArchivesText}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="6" Grid.Column="0" Text="Unmatched"
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="{Tr 'Pack.Summary_Unmatched'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="6" Grid.Column="1"
                                Text="{Binding Summary.UnmatchedFiles}"
                                Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="7" Grid.Column="0" Text="Manifest"
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="{Tr 'Pack.Summary_Manifest'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
-                    <TextBlock Grid.Row="7" Grid.Column="1" Margin="0,0,0,4">
-                        <Run Text="{Binding Summary.ManifestMods}" />
-                        <Run Text=" mods, " />
-                        <Run Text="{Binding Summary.ManifestArchives}" />
-                        <Run Text=" archives, " />
-                        <Run Text="{Binding Summary.ManifestExtensions}" />
-                        <Run Text=" extensions, " />
-                        <Run Text="{Binding Summary.ManifestExtras}" />
-                        <Run Text=" extras" />
-                    </TextBlock>
+                    <TextBlock Grid.Row="7" Grid.Column="1"
+                               Text="{Binding ManifestText}" Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="8" Grid.Column="0" Text="meta.ini"
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="{Tr 'Pack.Summary_MetaIni'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4" />
                     <TextBlock Grid.Row="8" Grid.Column="1"
                                Text="{Binding Summary.MetaIniCount}"
                                Margin="0,0,0,4" />
 
-                    <TextBlock Grid.Row="9" Grid.Column="0" Text="Written to"
+                    <TextBlock Grid.Row="9" Grid.Column="0" Text="{Tr 'Pack.Summary_WrittenTo'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,4"
                                IsVisible="{Binding Summary.UnmatchedWrittenTo, Converter={x:Static ObjectConverters.IsNotNull}}" />
                     <TextBlock Grid.Row="9" Grid.Column="1"
@@ -239,7 +211,7 @@
                                Margin="0,0,0,4"
                                IsVisible="{Binding Summary.UnmatchedWrittenTo, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-                    <TextBlock Grid.Row="10" Grid.Column="0" Text="Manifest path"
+                    <TextBlock Grid.Row="10" Grid.Column="0" Text="{Tr 'Pack.Summary_ManifestPath'}"
                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,16,0" />
                     <TextBlock Grid.Row="10" Grid.Column="1"
                                Text="{Binding Summary.ManifestPath}"
@@ -249,7 +221,7 @@
                 </Grid>
             </Border>
 
-            <Button Content="Done"
+            <Button Content="{Tr 'Common.Done_Button'}"
                     Command="{Binding DoneCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />
@@ -260,7 +232,7 @@
                     Spacing="12"
                     IsVisible="{Binding IsFailure}"
                     VerticalAlignment="Top">
-            <TextBlock Text="Pack failed"
+            <TextBlock Text="{Tr 'Pack.Failure_Title'}"
                        FontSize="18"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource ErrorBrush}" />
@@ -276,7 +248,7 @@
                            FontSize="12" />
             </Border>
 
-            <Button Content="Done"
+            <Button Content="{Tr 'Common.Done_Button'}"
                     Command="{Binding DoneCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />

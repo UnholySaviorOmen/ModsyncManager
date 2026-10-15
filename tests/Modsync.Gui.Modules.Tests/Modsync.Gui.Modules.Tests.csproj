@@ -13,11 +13,18 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
+    <PackageReference Include="CodingSeb.Localization" />
+    <PackageReference Include="CodingSeb.Localization.JsonFileLoader" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Modsync.Gui.Modules\Modsync.Gui.Modules.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\Modsync.Gui.Shared\Resources\Strings.loc.json"
+          Link="Resources\Strings.loc.json"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

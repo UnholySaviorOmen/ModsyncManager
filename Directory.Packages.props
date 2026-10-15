@@ -21,6 +21,9 @@
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageVersion Include="FluentAssertions" Version="6.12.1" />
+	<PackageVersion Include="CodingSeb.Localization" Version="1.4.0" />
+	<PackageVersion Include="CodingSeb.Localization.Avalonia" Version="1.4.0" />
+	<PackageVersion Include="CodingSeb.Localization.JsonFileLoader" Version="1.4.0" />
 
     <!-- NEW: GUI stack -->
     <PackageVersion Include="Avalonia" Version="11.2.1" />

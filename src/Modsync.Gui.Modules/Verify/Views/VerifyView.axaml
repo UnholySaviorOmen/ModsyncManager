@@ -9,7 +9,7 @@
         <!-- Header -->
         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,16">
             <TextBlock Grid.Column="0"
-                       Text="Verify"
+                       Text="{Tr 'Verify.Title'}"
                        FontSize="24"
                        FontWeight="Bold"
                        VerticalAlignment="Center" />
@@ -27,7 +27,7 @@
                        FontSize="12"
                        IsVisible="{Binding ErrorMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
-            <Button Content="Verify"
+            <Button Content="{Tr 'Verify.Verify_Button'}"
                     Command="{Binding VerifyCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />
@@ -39,12 +39,12 @@
                     IsVisible="{Binding IsVerifying}"
                     VerticalAlignment="Center"
                     HorizontalAlignment="Stretch">
-            <TextBlock Text="Verifying…"
+            <TextBlock Text="{Tr 'Verify.InProgress_Title'}"
                        FontSize="16"
                        HorizontalAlignment="Center" />
             <ProgressBar IsIndeterminate="True"
                          Height="6" />
-            <Button Content="Cancel"
+            <Button Content="{Tr 'Verify.Cancel_Button'}"
                     Command="{Binding CancelCommand}"
                     HorizontalAlignment="Center"
                     Padding="20,8" />
@@ -69,16 +69,19 @@
                            Foreground="{StaticResource TextMutedBrush}"
                            TextTrimming="CharacterEllipsis" />
                 <TextBlock Foreground="{StaticResource TextSecondaryBrush}" FontSize="12">
-                    <Run Text="Passed: " />
+                    <Run Text="{Tr 'Verify.Passed_Label'}" />
+                    <Run Text=" " />
                     <Run Text="{Binding PassedCount}" />
-                    <Run Text="   Failed: " />
+                    <Run Text="    " />
+                    <Run Text="{Tr 'Verify.Failed_Label'}" />
+                    <Run Text=" " />
                     <Run Text="{Binding FailedCount}" />
                 </TextBlock>
             </StackPanel>
 
             <!-- Toggle -->
             <CheckBox Grid.Row="1"
-                      Content="Show all checks (verbose)"
+                      Content="{Tr 'Verify.ShowAllChecks'}"
                       IsChecked="{Binding ShowAllChecks}"
                       Margin="0,0,0,8" />
 
@@ -122,7 +125,7 @@
 
             <!-- Done -->
             <Button Grid.Row="3"
-                    Content="Done"
+                    Content="{Tr 'Verify.Done_Button'}"
                     Command="{Binding DoneCommand}"
                     HorizontalAlignment="Left"
                     Margin="0,12,0,0"
@@ -134,7 +137,7 @@
                     Spacing="12"
                     IsVisible="{Binding IsFailure}"
                     VerticalAlignment="Top">
-            <TextBlock Text="Verify failed"
+            <TextBlock Text="{Tr 'Verify.Failure_Title'}"
                        FontSize="18"
                        FontWeight="SemiBold"
                        Foreground="{StaticResource ErrorBrush}" />
@@ -150,7 +153,7 @@
                            FontSize="12" />
             </Border>
 
-            <Button Content="Done"
+            <Button Content="{Tr 'Verify.Done_Button'}"
                     Command="{Binding DoneCommand}"
                     HorizontalAlignment="Left"
                     Padding="20,8" />
